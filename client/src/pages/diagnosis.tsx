@@ -3,13 +3,20 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { Camera, Upload, CheckCircle, ScanLine, Volume2 } from "lucide-react";
+import {
+  Camera,
+  Upload,
+  CheckCircle,
+  ScanLine,
+  Volume2,
+} from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import jsPDF from "jspdf";
 
 export default function Diagnosis() {
   const [step, setStep] = useState<"input" | "analyzing" | "result">("input");
+  const [activeTab, setActiveTab] = useState<"text" | "camera">("text");
   const [image, setImage] = useState<string | null>(null);
   const [textInput, setTextInput] = useState("");
   const [language, setLanguage] = useState<"en" | "hi">("en");
@@ -23,9 +30,12 @@ export default function Diagnosis() {
     treatment: string[];
   } | null>(null);
 
-  // ================= BACKEND CALL =================
+  /* ================= DIAGNOSIS CALL ================= */
   const handleDiagnose = async () => {
-    if (!textInput) return;
+    if (!textInput && !image) {
+      alert("Please describe the issue or upload an image.");
+      return;
+    }
 
     setStep("analyzing");
 
@@ -33,7 +43,10 @@ export default function Diagnosis() {
       const res = await fetch("/api/diagnose", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ symptoms: textInput, language }),
+        body: JSON.stringify({
+          symptoms: textInput,
+          language,
+        }),
       });
 
       const data = await res.json();
@@ -45,24 +58,33 @@ export default function Diagnosis() {
     }
   };
 
-  // ================= IMAGE PREVIEW =================
+  /* ================= IMAGE UPLOAD ================= */
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
     const reader = new FileReader();
-    reader.onloadend = () => setImage(reader.result as string);
+    reader.onloadend = () => {
+      setImage(reader.result as string);
+      setActiveTab("text"); // ✅ auto switch to text tab
+    };
     reader.readAsDataURL(file);
   };
 
-  // ================= VOICE =================
+  /* ================= VOICE ================= */
   const speakDiagnosis = () => {
-    if (!diagnosis) return;
+    if (!diagnosis || isSpeaking) return;
+
     setIsSpeaking(true);
 
     const text =
       language === "hi"
-        ? `बीमारी: ${diagnosis.disease}। कारण: ${diagnosis.cause}। उपचार: ${diagnosis.treatment.join("। ")}`
-        : `Disease: ${diagnosis.disease}. Cause: ${diagnosis.cause}. Treatment: ${diagnosis.treatment.join(". ")}`;
+        ? `बीमारी: ${diagnosis.disease}। कारण: ${diagnosis.cause}। उपचार: ${diagnosis.treatment.join(
+            "। "
+          )}`
+        : `Disease: ${diagnosis.disease}. Cause: ${diagnosis.cause}. Treatment: ${diagnosis.treatment.join(
+            ". "
+          )}`;
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = language === "hi" ? "hi-IN" : "en-US";
@@ -70,7 +92,7 @@ export default function Diagnosis() {
     window.speechSynthesis.speak(utterance);
   };
 
-  // ================= REAL PDF DOWNLOAD =================
+  /* ================= PDF ================= */
   const downloadPDF = () => {
     if (!diagnosis) return;
 
@@ -79,57 +101,39 @@ export default function Diagnosis() {
 
     pdf.setFontSize(18);
     pdf.text("EduFarma AI – Crop Diagnosis Report", 20, y);
-    y += 10;
+    y += 12;
 
     pdf.setFontSize(12);
     pdf.text(`Date: ${new Date().toLocaleDateString()}`, 20, y);
     y += 10;
 
-    pdf.setFontSize(14);
     pdf.text(`Disease: ${diagnosis.disease}`, 20, y);
     y += 8;
-
     pdf.text(`Severity: ${diagnosis.severity}`, 20, y);
-    y += 10;
+    y += 12;
 
-    pdf.setFontSize(13);
     pdf.text("Description:", 20, y);
-    y += 7;
-    pdf.setFontSize(11);
+    y += 6;
     pdf.text(diagnosis.description, 20, y, { maxWidth: 170 });
-    y += 15;
+    y += 14;
 
-    pdf.setFontSize(13);
     pdf.text("Cause:", 20, y);
-    y += 7;
-    pdf.setFontSize(11);
+    y += 6;
     pdf.text(diagnosis.cause, 20, y, { maxWidth: 170 });
-    y += 15;
+    y += 14;
 
-    pdf.setFontSize(13);
     pdf.text("Treatment Steps:", 20, y);
-    y += 7;
+    y += 6;
 
-    pdf.setFontSize(11);
     diagnosis.treatment.forEach((t, i) => {
       pdf.text(`${i + 1}. ${t}`, 22, y, { maxWidth: 165 });
       y += 7;
     });
 
-    y += 10;
-    pdf.setFontSize(10);
-    pdf.setTextColor(150);
-    pdf.text(
-      "⚠ This is an AI-generated report. Consult an agriculture officer if needed.",
-      20,
-      y,
-      { maxWidth: 170 }
-    );
-
     pdf.save("EduFarma_Diagnosis_Report.pdf");
   };
 
-  // ================= UI =================
+  /* ================= UI ================= */
   return (
     <Layout>
       <h2 className="mb-6 text-2xl lg:text-3xl font-bold text-center">
@@ -139,7 +143,10 @@ export default function Diagnosis() {
       <AnimatePresence mode="wait">
         {step === "input" && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <Tabs defaultValue="text">
+            <Tabs
+              value={activeTab}
+              onValueChange={(v) => setActiveTab(v as "text" | "camera")}
+            >
               <TabsList className="grid grid-cols-2 mb-6">
                 <TabsTrigger value="text">Describe Issue</TabsTrigger>
                 <TabsTrigger value="camera">Upload Photo</TabsTrigger>
@@ -162,15 +169,19 @@ export default function Diagnosis() {
                 <Card>
                   <CardContent className="p-6 text-center">
                     {image ? (
-                      <img src={image} className="mx-auto max-h-64 rounded-lg" />
+                      <img
+                        src={image}
+                        alt="Crop"
+                        className="mx-auto max-h-64 rounded-lg"
+                      />
                     ) : (
                       <>
-                        <Camera className="mx-auto mb-4" />
-                        <Button variant="outline">
+                        <Camera className="mx-auto mb-4 h-10 w-10 text-muted-foreground" />
+                        <Button variant="outline" className="relative">
                           <input
                             type="file"
                             accept="image/*"
-                            className="absolute inset-0 opacity-0"
+                            className="absolute inset-0 opacity-0 cursor-pointer"
                             onChange={handleImageUpload}
                           />
                           <Upload className="mr-2" /> Upload Image
@@ -190,17 +201,19 @@ export default function Diagnosis() {
 
         {step === "analyzing" && (
           <motion.div className="text-center py-20">
-            <ScanLine className="mx-auto animate-pulse mb-4" />
+            <ScanLine className="mx-auto h-10 w-10 animate-pulse mb-4" />
             <p>Analyzing crop health using AI…</p>
           </motion.div>
         )}
 
         {step === "result" && diagnosis && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <div className="flex flex-wrap gap-3 mb-4 justify-between">
+            <div className="flex justify-between items-center mb-4">
               <select
                 value={language}
-                onChange={(e) => setLanguage(e.target.value as "en" | "hi")}
+                onChange={(e) =>
+                  setLanguage(e.target.value as "en" | "hi")
+                }
                 className="border rounded px-3 py-1"
               >
                 <option value="en">English</option>
@@ -250,8 +263,8 @@ export default function Diagnosis() {
             </Card>
 
             <p className="text-xs text-red-600 mb-4">
-              ⚠ AI-generated diagnosis. Consult an agriculture officer if symptoms
-              persist.
+              ⚠ AI-generated diagnosis. Consult an agriculture officer if
+              symptoms persist.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3">
