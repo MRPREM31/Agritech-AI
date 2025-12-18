@@ -8,7 +8,8 @@ import {
   Droplets,
   ThermometerSun,
   AlertTriangle,
-  MapPin,
+  Volume2,
+  Square,
 } from "lucide-react";
 
 const API_KEY = "bb4c0817cd95ebca24915ae099e8a8af";
@@ -16,201 +17,201 @@ const API_KEY = "bb4c0817cd95ebca24915ae099e8a8af";
 export default function Weather() {
   const [current, setCurrent] = useState<any>(null);
   const [forecast, setForecast] = useState<any[]>([]);
-  const [location, setLocation] = useState<string>("Detecting location...");
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+
+  const [alertText, setAlertText] = useState("");
+  const [speaking, setSpeaking] = useState(false);
 
   useEffect(() => {
-    if (!navigator.geolocation) {
-      setError("Geolocation not supported");
-      fetchWeatherByCity("Delhi");
-      return;
-    }
-
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const { latitude, longitude } = pos.coords;
-        fetchWeatherByCoords(latitude, longitude);
+        fetchWeather(pos.coords.latitude, pos.coords.longitude);
       },
       () => {
-        // ❌ Permission denied → fallback
         fetchWeatherByCity("Delhi");
       }
     );
   }, []);
 
-  async function fetchWeatherByCoords(lat: number, lon: number) {
-    try {
-      const currentRes = await fetch(
-        `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric`
-      );
-      const currentData = await currentRes.json();
+  /* ================= FETCH WEATHER ================= */
 
-      const forecastRes = await fetch(
-        `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric`
-      );
-      const forecastData = await forecastRes.json();
+  async function fetchWeather(lat: number, lon: number) {
+    const currentRes = await fetch(
+      `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric`
+    );
+    const currentData = await currentRes.json();
 
-      setCurrent(currentData);
-      setLocation(`${currentData.name}, ${currentData.sys.country}`);
+    const forecastRes = await fetch(
+      `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric`
+    );
+    const forecastData = await forecastRes.json();
 
-      const daily = forecastData.list.filter((_: any, i: number) => i % 8 === 0);
-      setForecast(daily);
-      setLoading(false);
-    } catch (err) {
-      setError("Failed to fetch weather");
-      setLoading(false);
-    }
+    setCurrent(currentData);
+    setForecast(forecastData.list.filter((_: any, i: number) => i % 8 === 0));
+    generateFarmerAlert(currentData);
+    setLoading(false);
   }
 
   async function fetchWeatherByCity(city: string) {
-    try {
-      const currentRes = await fetch(
-        `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${API_KEY}&units=metric`
-      );
-      const currentData = await currentRes.json();
+    const currentRes = await fetch(
+      `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${API_KEY}&units=metric`
+    );
+    const currentData = await currentRes.json();
 
-      const forecastRes = await fetch(
-        `https://api.openweathermap.org/data/2.5/forecast?q=${city}&appid=${API_KEY}&units=metric`
-      );
-      const forecastData = await forecastRes.json();
+    const forecastRes = await fetch(
+      `https://api.openweathermap.org/data/2.5/forecast?q=${city}&appid=${API_KEY}&units=metric`
+    );
+    const forecastData = await forecastRes.json();
 
-      setCurrent(currentData);
-      setLocation(`${currentData.name}, ${currentData.sys.country}`);
+    setCurrent(currentData);
+    setForecast(forecastData.list.filter((_: any, i: number) => i % 8 === 0));
+    generateFarmerAlert(currentData);
+    setLoading(false);
+  }
 
-      const daily = forecastData.list.filter((_: any, i: number) => i % 8 === 0);
-      setForecast(daily);
-      setLoading(false);
-    } catch {
-      setError("Weather unavailable");
-      setLoading(false);
+  /* ================= FARMER ALERT LOGIC ================= */
+
+  function generateFarmerAlert(data: any) {
+    const temp = data.main.temp;
+    const humidity = data.main.humidity;
+    const wind = data.wind.speed;
+    const isRain = data.weather[0].main === "Rain";
+
+    let message = "";
+
+    if (isRain) {
+      message = "Aaj baarish ka din hai. Kripya spray aur khaad na daalein.";
+    } else if (humidity > 80) {
+      message = "Aaj hawa mein zyada nami hai. Anaj aur beej ko sookhi jagah rakhein.";
+    } else if (wind > 15) {
+      message = "Aaj hawa tez chal rahi hai. Spray karna theek nahi hai.";
+    } else if (temp >= 20 && temp <= 32) {
+      message = "Aaj fasal kaatne ke liye achha din hai.";
+    } else {
+      message = "Aaj mausam samanya hai. Kheti ka kaam dhyaan se karein.";
     }
+
+    setAlertText(message);
+  }
+
+  /* ================= VOICE ================= */
+
+  function speakHindi() {
+    const msg = new SpeechSynthesisUtterance(alertText);
+    msg.lang = "hi-IN";
+    msg.rate = 0.9;
+
+    speechSynthesis.cancel();
+    speechSynthesis.speak(msg);
+    setSpeaking(true);
+
+    msg.onend = () => setSpeaking(false);
+  }
+
+  function stopSpeaking() {
+    speechSynthesis.cancel();
+    setSpeaking(false);
   }
 
   if (loading) {
     return (
       <Layout>
-        <p className="text-center text-muted-foreground">
-          🌍 Detecting your location & weather...
-        </p>
+        <p className="text-center">🌦️ Mausam jaankari la rahe hain...</p>
       </Layout>
     );
   }
 
-  if (error) {
-    return (
-      <Layout>
-        <p className="text-center text-red-500">{error}</p>
-      </Layout>
-    );
-  }
-
-  const isRain = current.weather[0].main === "Rain";
+  /* ================= UI ================= */
 
   return (
     <Layout>
-      <h2 className="mb-6 text-2xl lg:text-3xl font-bold text-secondary">
-        Live Weather & Farmer Alerts
-      </h2>
+      <h2 className="mb-4 text-2xl font-bold">🌾 Aaj Ka Mausam & Salah</h2>
 
-      {/* Current Weather */}
-      <Card className="mb-6 bg-gradient-to-br from-blue-500 to-blue-600 text-white border-none">
+      {/* CURRENT WEATHER */}
+      <Card className="mb-5 bg-gradient-to-br from-blue-500 to-blue-600 text-white">
         <CardContent className="p-6">
-          <div className="flex justify-between items-start mb-6">
-            <div>
-              <h3 className="text-4xl font-bold">
-                {Math.round(current.main.temp)}°C
-              </h3>
-              <div className="flex items-center gap-1 text-white/90">
-                <MapPin className="h-4 w-4" />
-                <p>{location}</p>
-              </div>
-            </div>
-            {isRain ? (
-              <CloudRain className="h-20 w-20 animate-pulse" />
+          <div className="flex justify-between items-center">
+            <h3 className="text-4xl font-bold">
+              {Math.round(current.main.temp)}°C
+            </h3>
+            {current.weather[0].main === "Rain" ? (
+              <CloudRain className="h-14 w-14" />
             ) : (
-              <Sun className="h-20 w-20 text-yellow-300 animate-pulse" />
+              <Sun className="h-14 w-14 text-yellow-300" />
             )}
           </div>
 
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div className="bg-white/10 rounded-lg p-3">
-              <Wind className="h-5 w-5 mx-auto mb-1" />
-              <p className="text-xs">Wind</p>
-              <p className="font-bold">{current.wind.speed} km/h</p>
-            </div>
-            <div className="bg-white/10 rounded-lg p-3">
-              <Droplets className="h-5 w-5 mx-auto mb-1" />
-              <p className="text-xs">Humidity</p>
-              <p className="font-bold">{current.main.humidity}%</p>
-            </div>
-            <div className="bg-white/10 rounded-lg p-3">
-              <ThermometerSun className="h-5 w-5 mx-auto mb-1" />
-              <p className="text-xs">Condition</p>
-              <p className="font-bold">{current.weather[0].main}</p>
-            </div>
+          <div className="grid grid-cols-3 gap-3 mt-4 text-center text-sm">
+            <Info icon={<Wind />} label="Hawa" value={`${current.wind.speed} km/h`} />
+            <Info icon={<Droplets />} label="Nami" value={`${current.main.humidity}%`} />
+            <Info icon={<ThermometerSun />} label="Stithi" value={current.weather[0].main} />
           </div>
         </CardContent>
       </Card>
 
-      {/* Alerts */}
-      <div className="grid lg:grid-cols-2 gap-4 mb-6">
-        {current.main.temp > 35 && (
-          <Card className="border-l-4 border-l-red-500 bg-red-50">
-            <CardContent className="p-4">
-              <h4 className="font-bold flex gap-2">
-                <AlertTriangle className="h-4 w-4" /> Heat Alert
-              </h4>
-              <p className="text-sm mt-1">
-                High temperature detected. Water crops in evening.
-              </p>
-            </CardContent>
-          </Card>
-        )}
+      {/* 🌾 FARMER SIMPLE ALERT */}
+      <Card className="mb-6 border-l-4 border-l-green-600 bg-green-50">
+        <CardContent className="p-4">
+          <h4 className="font-bold flex gap-2 mb-2">
+            <AlertTriangle className="h-4 w-4" /> Kisan Salah
+          </h4>
 
-        {isRain && (
-          <Card className="border-l-4 border-l-blue-500 bg-blue-50">
-            <CardContent className="p-4">
-              <h4 className="font-bold flex gap-2">
-                <AlertTriangle className="h-4 w-4" /> Rain Alert
-              </h4>
-              <p className="text-sm mt-1">
-                Rain expected. Avoid spraying pesticides.
-              </p>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+          <p className="text-sm mb-3">{alertText}</p>
 
-      {/* Forecast */}
-      <div>
-        <h3 className="mb-3 text-lg font-bold">5-Day Forecast</h3>
-        <div className="space-y-3">
-          {forecast.map((day, i) => (
-            <div
-              key={i}
-              className="flex justify-between bg-white p-4 rounded-xl border"
+          {!speaking ? (
+            <button
+              onClick={speakHindi}
+              className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg"
             >
-              <div>
-                <p className="font-semibold">
-                  {new Date(day.dt_txt).toDateString()}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {day.weather[0].description}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="font-bold">
-                  {Math.round(day.main.temp)}°C
-                </p>
-                <p className="text-xs">
-                  Humidity {day.main.humidity}%
-                </p>
-              </div>
+              <Volume2 className="h-4 w-4" /> Suno Salah
+            </button>
+          ) : (
+            <button
+              onClick={stopSpeaking}
+              className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg"
+            >
+              <Square className="h-4 w-4" /> Band Karein
+            </button>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 📅 5-DAY FUTURE WEATHER */}
+      <h3 className="mb-3 text-lg font-bold">📅 Aane Wale 5 Din Ka Mausam</h3>
+
+      <div className="space-y-3">
+        {forecast.map((day, i) => (
+          <div
+            key={i}
+            className="flex justify-between bg-white p-4 rounded-xl border"
+          >
+            <div>
+              <p className="font-semibold">
+                {new Date(day.dt_txt).toDateString()}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {day.weather[0].description}
+              </p>
             </div>
-          ))}
-        </div>
+
+            <div className="text-right">
+              <p className="font-bold">{Math.round(day.main.temp)}°C</p>
+              <p className="text-xs">Nami {day.main.humidity}%</p>
+            </div>
+          </div>
+        ))}
       </div>
     </Layout>
+  );
+}
+
+/* ===== Small Component ===== */
+function Info({ icon, label, value }: any) {
+  return (
+    <div className="bg-white/10 rounded-lg p-3">
+      <div className="mx-auto mb-1">{icon}</div>
+      <p className="text-xs">{label}</p>
+      <p className="font-bold">{value}</p>
+    </div>
   );
 }
