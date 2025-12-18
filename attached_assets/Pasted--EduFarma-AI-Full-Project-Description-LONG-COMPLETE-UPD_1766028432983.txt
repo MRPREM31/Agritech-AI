@@ -1,0 +1,35 @@
+🌾 EduFarma AI – Full Project Description (LONG & COMPLETE, UPDATED)
+
+EduFarma AI is a farmer-centric, AI-powered agritech platform designed to make agricultural knowledge simple, accessible, and actionable for farmers, particularly in rural and semi-rural regions. The platform focuses on helping farmers quickly understand crop-related problems, learn best farming practices, and make informed decisions using a combination of AI reasoning, multilingual support, and gamification.
+
+🤖 AI-Powered Crop Diagnosis
+
+EduFarma AI allows farmers to diagnose crop issues in two easy ways. Farmers can either describe the problem in their own words (for example, “fungus on leaf,” “white powder on leaves,” “yellow spots,” or “pest damage”) or use the built-in camera feature to capture a live photo of the crop leaf or plant directly from their mobile device. For offline demos and training, the platform also provides mock crop images that simulate real-world disease scenarios.
+
+The captured image or text-based description is processed through an AI-driven diagnosis pipeline. The system interprets visible symptoms or farmer-described conditions and passes structured context to the Groq Large Language Model (LLM), which performs intelligent reasoning to identify the most likely crop disease or issue. EduFarma AI then explains why the problem occurs, lists recommended medicines, suggests treatment steps, and provides basic prevention tips in simple Hindi or English, ensuring clarity and ease of understanding.
+
+🗣️ Hindi Voice Assistant & Reports
+
+To further improve accessibility, EduFarma AI includes a Hindi voice assistant that reads out the diagnosis, causes, and medicine recommendations aloud. This feature is especially helpful for farmers with limited reading ability. Each diagnosis can also be automatically converted into a well-structured PDF report, which farmers can download, share, or print for offline use. Additionally, the system generates a QR-based scan history, allowing farmers to revisit previous diagnoses without requiring any login or account creation.
+
+🎮 Gamified Learning & Play Module
+
+Beyond diagnosis, EduFarma AI emphasizes education through gamification. The platform offers multiple interactive learning and play modules, including:
+
+A quiz-based learning game on crop diseases and prevention
+
+A fertilizer and soil knowledge game
+
+A weather-awareness challenge
+
+A best-practice farming quiz
+
+These games are designed in a play-and-learn format, available offline, and reward farmers with points, levels, and progress badges. All game content is available in Hindi and English, making learning engaging, simple, and enjoyable.
+
+🌦️ Weather-Based Alerts & Decision Support
+
+EduFarma AI also integrates a weather-based alert system that provides basic climate insights to support better farming decisions. The system helps farmers avoid risky actions such as spraying pesticides before rainfall or during extreme heat conditions.
+
+🛠️ Technology & Impact
+
+The platform is built using HTML, CSS, and JavaScript for the frontend and Python Flask for the backend, with Groq LLM powering the AI reasoning layer. EduFarma AI is intentionally designed without any login requirement, ensuring ease of access and inclusivity. The project demonstrates how AI can be responsibly and practically applied in agriculture to empower farmers with timely information, reduce crop loss, improve productivity, and promote sustainable farming practices through education, engagement, and technology.
