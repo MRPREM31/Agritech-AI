@@ -1,185 +1,192 @@
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import { Link } from "wouter";
 import { Droplets, RotateCcw, Trophy } from "lucide-react";
 
+type Drop = {
+  id: number;
+  x: number;
+};
+
 export default function WaterGame() {
-  const [gameState, setGameState] = useState<"menu" | "playing" | "gameOver">("menu");
+  const [gameState, setGameState] =
+    useState<"menu" | "playing" | "gameOver">("menu");
   const [score, setScore] = useState(0);
   const [water, setWater] = useState(100);
-  const [crops, setCrops] = useState<Array<{id: number, x: number, collected: boolean}>>([]);
-  const [nextId, setNextId] = useState(0);
+  const [drops, setDrops] = useState<Drop[]>([]);
+  const idRef = useRef(0);
 
+  /* ---------------- START GAME ---------------- */
   const startGame = () => {
     setScore(0);
     setWater(100);
-    setCrops([]);
-    setNextId(0);
+    setDrops([]);
     setGameState("playing");
-    
-    // Generate crops periodically
-    const interval = setInterval(() => {
-      setCrops(prev => [...prev, {
-        id: nextId + prev.length,
-        x: Math.random() * 80,
-        collected: false
-      }]);
-    }, 800);
-
-    return () => clearInterval(interval);
   };
 
-  const collectWater = (x: number, id: number) => {
-    setCrops(prev => prev.map(c => c.id === id ? {...c, collected: true} : c));
-    setScore(score + 10);
-    setWater(Math.max(0, water - 3));
-    confetti({ particleCount: 30, spread: 60, origin: { x: x / 100, y: 0.7 } });
-  };
-
+  /* ---------------- SPAWN DROPS ---------------- */
   useEffect(() => {
     if (gameState !== "playing") return;
-    if (water <= 0) {
-      setGameState("gameOver");
-      if (score > 50) {
-        confetti({ particleCount: 150, spread: 100 });
-      }
-    }
-  }, [water, gameState, score]);
+
+    const interval = setInterval(() => {
+      setDrops(prev => {
+        if (prev.length >= 6) return prev;
+
+        return [
+          ...prev,
+          {
+            id: idRef.current++,
+            x: Math.random() * 85,
+          },
+        ];
+      });
+    }, 600);
+
+    return () => clearInterval(interval);
+  }, [gameState]);
+
+  /* ---------------- COLLECT DROP ---------------- */
+  const collectWater = (x: number, id: number) => {
+    if (navigator.vibrate) navigator.vibrate(60);
+
+    setDrops(prev => prev.filter(d => d.id !== id));
+    setScore(s => s + 10);
+    setWater(w => Math.max(0, w - 3));
+
+    confetti({
+      particleCount: 20,
+      spread: 40,
+      origin: { x: x / 100, y: 0.7 },
+    });
+  };
+
+  /* ---------------- DROP MISSED ---------------- */
+  const dropMissed = () => {
+    setGameState("gameOver");
+  };
 
   return (
     <Layout>
       <div className="max-w-2xl mx-auto">
-        <h2 className="mb-6 font-heading text-2xl lg:text-3xl font-bold text-secondary flex items-center gap-2">
+        <h2 className="mb-6 text-3xl font-bold text-secondary flex items-center gap-2">
           <Droplets className="h-8 w-8 text-blue-600" />
           Water Collection Game
         </h2>
 
         <AnimatePresence mode="wait">
+          {/* ---------------- MENU ---------------- */}
           {gameState === "menu" && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="text-center space-y-6"
-            >
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
               <Card className="bg-blue-50 border-2 border-blue-200">
-                <CardContent className="p-8 text-center">
-                  <div className="text-5xl mb-4">💧</div>
-                  <h3 className="font-heading text-2xl font-bold text-secondary mb-3">Collect Water Drops</h3>
-                  <p className="text-muted-foreground mb-6">
-                    खेत को बचाओ! / Save the farm! <br/>
-                    Click or tap on water drops to collect them. Each drop costs water. Plan wisely!
+                <CardContent className="p-8 text-center space-y-4">
+                  <div className="text-5xl">💧</div>
+                  <h3 className="text-2xl font-bold">Save Every Drop</h3>
+                  <p className="text-muted-foreground">
+                    Tap water drops before they touch the ground.
+                    <br />
+                    Miss one → Game Over!
                   </p>
-                  <div className="text-left bg-white p-4 rounded-lg space-y-2 text-sm mb-6">
-                    <p><strong>⭐ Collect 50 points or more to win!</strong></p>
-                    <p>💧 Each collection uses 3% water</p>
-                    <p>⏱️ You have limited water to work with</p>
-                  </div>
+                  <p className="font-bold">🎯 Score 50+ to win</p>
                 </CardContent>
               </Card>
-              
-              <Button size="lg" onClick={startGame} className="w-full">
+
+              <Button size="lg" className="w-full mt-4" onClick={startGame}>
                 Start Game
               </Button>
             </motion.div>
           )}
 
+          {/* ---------------- PLAYING ---------------- */}
           {gameState === "playing" && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="space-y-4"
-            >
-              <div className="flex justify-between items-center">
-                <div className="text-2xl font-bold text-secondary">Score: {score}</div>
-                <div className="text-lg font-medium">
-                  Water: <span className={water > 30 ? "text-blue-600" : water > 10 ? "text-orange-600" : "text-red-600"}>
-                    {water.toFixed(0)}%
-                  </span>
-                </div>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+              <div className="flex justify-between font-bold">
+                <span>Score: {score}</span>
+                <span
+                  className={
+                    water > 30
+                      ? "text-blue-600"
+                      : water > 10
+                      ? "text-orange-500"
+                      : "text-red-600"
+                  }
+                >
+                  Water: {water}%
+                </span>
               </div>
 
-              <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                <motion.div 
+              {/* Water Bar */}
+              <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+                <motion.div
                   className="h-full bg-blue-600"
                   animate={{ width: `${water}%` }}
+                  transition={{ duration: 0.3 }}
                 />
               </div>
 
-              <Card className="h-96 relative overflow-hidden bg-gradient-to-b from-blue-100 to-blue-50 border-2 border-blue-200">
-                <CardContent className="absolute inset-0 p-4">
-                  {crops.map((crop) => (
+              {/* Game Area */}
+              <Card className="h-96 relative overflow-hidden bg-gradient-to-b from-blue-100 to-blue-50 border-2 border-blue-300">
+                <CardContent className="absolute inset-0">
+                  {drops.map(drop => (
                     <motion.div
-                      key={crop.id}
-                      initial={{ y: -50, opacity: 0 }}
-                      animate={{ y: "100%", opacity: crop.collected ? 0 : 1 }}
-                      transition={{ duration: crop.collected ? 0.3 : 4 }}
+                      key={drop.id}
+                      initial={{ y: -40 }}
+                      animate={{ y: 360 }} // ✅ FORCE bottom
+                      transition={{ duration: 4, ease: "linear" }}
+                      className="absolute text-4xl cursor-pointer select-none"
+                      style={{ left: `${drop.x}%` }}
+                      onClick={() => collectWater(drop.x, drop.id)}
                       onAnimationComplete={() => {
-                        if (!crop.collected) {
-                          setCrops(prev => prev.filter(c => c.id !== crop.id));
+                        // If still exists, it means user missed it
+                        if (drops.find(d => d.id === drop.id)) {
+                          dropMissed();
                         }
                       }}
-                      className={`absolute text-4xl cursor-pointer ${crop.collected ? "hidden" : ""}`}
-                      style={{ left: `${crop.x}%` }}
-                      onClick={() => collectWater(crop.x, crop.id)}
                     >
                       💧
                     </motion.div>
                   ))}
                 </CardContent>
               </Card>
-
-              {water <= 0 && (
-                <Button onClick={() => setGameState("gameOver")} className="w-full">
-                  Game Over - Check Results
-                </Button>
-              )}
             </motion.div>
           )}
 
+          {/* ---------------- GAME OVER ---------------- */}
           {gameState === "gameOver" && (
             <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
               className="text-center space-y-6"
             >
-              <div className="flex justify-center">
-                {score >= 50 ? (
-                  <Trophy className="h-24 w-24 text-yellow-500 animate-bounce" />
-                ) : (
-                  <Droplets className="h-24 w-24 text-blue-500" />
-                )}
-              </div>
+              {score >= 50 ? (
+                <Trophy className="mx-auto h-20 w-20 text-yellow-500" />
+              ) : (
+                <Droplets className="mx-auto h-20 w-20 text-blue-500" />
+              )}
 
-              <div>
-                <h3 className="font-heading text-3xl font-bold text-secondary mb-2">
-                  {score >= 50 ? "🎉 You Won!" : "Game Over"}
-                </h3>
-                <p className="text-5xl font-bold text-primary">{score}</p>
-                <p className="text-muted-foreground">Points Earned</p>
-              </div>
+              <h3 className="text-3xl font-bold">
+                {score >= 50 ? "🎉 You Won!" : "💥 Water Missed!"}
+              </h3>
+
+              <p className="text-5xl font-bold">{score}</p>
 
               <Card className="bg-amber-50 border-2 border-amber-200">
-                <CardContent className="p-6 text-left space-y-2">
-                  <p className="font-bold text-secondary">Real Life Lesson:</p>
-                  <p className="text-sm text-muted-foreground">
-                    जल संचय महत्वपूर्ण है! / Water conservation is key! This game teaches you to manage limited resources wisely - just like farming during drought season.
-                  </p>
+                <CardContent className="p-5 text-sm">
+                  In farming, every drop matters. Missing water means loss 🌱💧
                 </CardContent>
               </Card>
 
               <div className="flex gap-3">
-                <Button onClick={startGame} className="flex-1">
+                <Button className="flex-1" onClick={startGame}>
                   <RotateCcw className="mr-2 h-4 w-4" />
                   Play Again
                 </Button>
                 <Link href="/learn">
                   <Button variant="outline" className="flex-1">
-                    Back to Games
+                    Back
                   </Button>
                 </Link>
               </div>
