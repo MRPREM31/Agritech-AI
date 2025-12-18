@@ -9,6 +9,8 @@ import {
   CheckCircle,
   ScanLine,
   Volume2,
+  ArrowLeft,
+  Download,
 } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -22,15 +24,11 @@ export default function Diagnosis() {
   const [language, setLanguage] = useState<"en" | "hi">("en");
   const [isSpeaking, setIsSpeaking] = useState(false);
 
-  const [diagnosis, setDiagnosis] = useState<{
-    disease: string;
-    severity: string;
-    description: string;
-    cause: string;
-    treatment: string[];
-  } | null>(null);
+  const [diagnosis, setDiagnosis] = useState<any>(null);
+  const [translated, setTranslated] = useState<any>(null);
+  const [translating, setTranslating] = useState(false);
 
-  /* ================= DIAGNOSIS CALL ================= */
+  /* ================= DIAGNOSIS ================= */
   const handleDiagnose = async () => {
     if (!textInput && !image) {
       alert("Please describe the issue or upload an image.");
@@ -43,22 +41,21 @@ export default function Diagnosis() {
       const res = await fetch("/api/diagnose", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          symptoms: textInput,
-          language,
-        }),
+        body: JSON.stringify({ symptoms: textInput }),
       });
 
       const data = await res.json();
       setDiagnosis(data);
+      setTranslated(null);
+      setLanguage("en");
       setStep("result");
     } catch {
-      alert("AI diagnosis is temporarily unavailable.");
+      alert("AI diagnosis unavailable.");
       setStep("input");
     }
   };
 
-  /* ================= IMAGE UPLOAD ================= */
+  /* ================= IMAGE ================= */
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -66,35 +63,67 @@ export default function Diagnosis() {
     const reader = new FileReader();
     reader.onloadend = () => {
       setImage(reader.result as string);
-      setActiveTab("text"); // ✅ auto switch to text tab
+      setActiveTab("text");
     };
     reader.readAsDataURL(file);
   };
 
+  /* ================= TRANSLATION ================= */
+  const translateToHindi = async (text: string) => {
+    const res = await fetch(
+      `https://api.mymemory.translated.net/get?q=${encodeURIComponent(
+        text
+      )}&langpair=en|hi`
+    );
+    const data = await res.json();
+    return data.responseData.translatedText;
+  };
+
+  const translateDiagnosis = async () => {
+    if (!diagnosis) return;
+
+    setTranslating(true);
+
+    const translatedData = {
+      disease: await translateToHindi(diagnosis.disease),
+      severity: await translateToHindi(diagnosis.severity),
+      description: await translateToHindi(diagnosis.description),
+      cause: await translateToHindi(diagnosis.cause),
+      treatment: await Promise.all(
+        diagnosis.treatment.map((t: string) => translateToHindi(t))
+      ),
+    };
+
+    setTranslated(translatedData);
+    setTranslating(false);
+  };
+
   /* ================= VOICE ================= */
   const speakDiagnosis = () => {
-    if (!diagnosis || isSpeaking) return;
-
-    setIsSpeaking(true);
+    const d = language === "hi" && translated ? translated : diagnosis;
+    if (!d || isSpeaking) return;
 
     const text =
       language === "hi"
-        ? `बीमारी: ${diagnosis.disease}। कारण: ${diagnosis.cause}। उपचार: ${diagnosis.treatment.join(
+        ? `बीमारी: ${d.disease}। कारण: ${d.cause}। उपचार: ${d.treatment.join(
             "। "
           )}`
-        : `Disease: ${diagnosis.disease}. Cause: ${diagnosis.cause}. Treatment: ${diagnosis.treatment.join(
+        : `Disease: ${d.disease}. Cause: ${d.cause}. Treatment: ${d.treatment.join(
             ". "
           )}`;
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = language === "hi" ? "hi-IN" : "en-US";
     utterance.onend = () => setIsSpeaking(false);
-    window.speechSynthesis.speak(utterance);
+
+    setIsSpeaking(true);
+    speechSynthesis.speak(utterance);
   };
 
   /* ================= PDF ================= */
   const downloadPDF = () => {
-    if (!diagnosis) return;
+    const d = language === "hi" && translated ? translated : diagnosis;
+    if (!d) return;
 
     const pdf = new jsPDF();
     let y = 20;
@@ -107,25 +136,25 @@ export default function Diagnosis() {
     pdf.text(`Date: ${new Date().toLocaleDateString()}`, 20, y);
     y += 10;
 
-    pdf.text(`Disease: ${diagnosis.disease}`, 20, y);
+    pdf.text(`Disease: ${d.disease}`, 20, y);
     y += 8;
-    pdf.text(`Severity: ${diagnosis.severity}`, 20, y);
+    pdf.text(`Severity: ${d.severity}`, 20, y);
     y += 12;
 
     pdf.text("Description:", 20, y);
     y += 6;
-    pdf.text(diagnosis.description, 20, y, { maxWidth: 170 });
+    pdf.text(d.description, 20, y, { maxWidth: 170 });
     y += 14;
 
     pdf.text("Cause:", 20, y);
     y += 6;
-    pdf.text(diagnosis.cause, 20, y, { maxWidth: 170 });
+    pdf.text(d.cause, 20, y, { maxWidth: 170 });
     y += 14;
 
     pdf.text("Treatment Steps:", 20, y);
     y += 6;
 
-    diagnosis.treatment.forEach((t, i) => {
+    d.treatment.forEach((t: string, i: number) => {
       pdf.text(`${i + 1}. ${t}`, 22, y, { maxWidth: 165 });
       y += 7;
     });
@@ -133,145 +162,158 @@ export default function Diagnosis() {
     pdf.save("EduFarma_Diagnosis_Report.pdf");
   };
 
+  const d = language === "hi" && translated ? translated : diagnosis;
+
   /* ================= UI ================= */
   return (
     <Layout>
-      <h2 className="mb-6 text-2xl lg:text-3xl font-bold text-center">
-        🌾 Diagnose Crop
+      <h2 className="mb-8 text-2xl lg:text-3xl font-bold text-center text-green-700">
+        🌾 Smart Crop Diagnosis
       </h2>
 
       <AnimatePresence mode="wait">
+        {/* INPUT */}
         {step === "input" && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <Tabs
-              value={activeTab}
-              onValueChange={(v) => setActiveTab(v as "text" | "camera")}
-            >
-              <TabsList className="grid grid-cols-2 mb-6">
-                <TabsTrigger value="text">Describe Issue</TabsTrigger>
-                <TabsTrigger value="camera">Upload Photo</TabsTrigger>
-              </TabsList>
+            <Card className="shadow-md">
+              <CardContent className="p-6">
+                <Tabs
+                  value={activeTab}
+                  onValueChange={(v) => setActiveTab(v as any)}
+                >
+                  <TabsList className="grid grid-cols-2 mb-6">
+                    <TabsTrigger value="text">Describe Issue</TabsTrigger>
+                    <TabsTrigger value="camera">Upload Photo</TabsTrigger>
+                  </TabsList>
 
-              <TabsContent value="text">
-                <Card>
-                  <CardContent className="p-6">
+                  <TabsContent value="text">
                     <Textarea
-                      placeholder="White powder on leaves, yellow spots..."
                       className="min-h-[180px]"
+                      placeholder="White powder on leaves, yellow spots..."
                       value={textInput}
                       onChange={(e) => setTextInput(e.target.value)}
                     />
-                  </CardContent>
-                </Card>
-              </TabsContent>
+                  </TabsContent>
 
-              <TabsContent value="camera">
-                <Card>
-                  <CardContent className="p-6 text-center">
-                    {image ? (
-                      <img
-                        src={image}
-                        alt="Crop"
-                        className="mx-auto max-h-64 rounded-lg"
-                      />
-                    ) : (
-                      <>
-                        <Camera className="mx-auto mb-4 h-10 w-10 text-muted-foreground" />
-                        <Button variant="outline" className="relative">
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="absolute inset-0 opacity-0 cursor-pointer"
-                            onChange={handleImageUpload}
-                          />
-                          <Upload className="mr-2" /> Upload Image
-                        </Button>
-                      </>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
+                  <TabsContent value="camera">
+                    <div className="text-center">
+                      <Camera className="mx-auto mb-3 text-muted-foreground" />
+                      <Button variant="outline" className="relative">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="absolute inset-0 opacity-0"
+                          onChange={handleImageUpload}
+                        />
+                        <Upload className="mr-2" /> Upload Image
+                      </Button>
+                    </div>
+                  </TabsContent>
 
-              <Button className="w-full mt-6" onClick={handleDiagnose}>
-                🔍 Start Diagnosis
-              </Button>
-            </Tabs>
+                  <Button
+                    className="w-full mt-6 bg-green-600 hover:bg-green-700"
+                    onClick={handleDiagnose}
+                  >
+                    🔍 Start Diagnosis
+                  </Button>
+                </Tabs>
+              </CardContent>
+            </Card>
           </motion.div>
         )}
 
+        {/* ANALYZING */}
         {step === "analyzing" && (
-          <motion.div className="text-center py-20">
-            <ScanLine className="mx-auto h-10 w-10 animate-pulse mb-4" />
-            <p>Analyzing crop health using AI…</p>
+          <motion.div className="text-center py-24">
+            <ScanLine className="mx-auto animate-pulse mb-4 text-green-600" />
+            <p className="text-lg font-medium">
+              Analyzing crop health using AI…
+            </p>
           </motion.div>
         )}
 
-        {step === "result" && diagnosis && (
+        {/* RESULT */}
+        {step === "result" && d && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
               <select
                 value={language}
-                onChange={(e) =>
-                  setLanguage(e.target.value as "en" | "hi")
-                }
-                className="border rounded px-3 py-1"
+                onChange={async (e) => {
+                  const lang = e.target.value as "en" | "hi";
+                  setLanguage(lang);
+                  if (lang === "hi") await translateDiagnosis();
+                }}
+                className="border rounded-md px-3 py-2"
               >
                 <option value="en">English</option>
                 <option value="hi">Hindi</option>
               </select>
 
-              <Button size="sm" variant="outline" onClick={speakDiagnosis}>
-                <Volume2 className="mr-1" /> Speak
+              <Button variant="outline" onClick={speakDiagnosis}>
+                <Volume2 className="mr-2 h-4 w-4" /> Speak
               </Button>
             </div>
 
-            <Card className="mb-4 border-l-4 border-red-500">
-              <CardContent>
-                <h3 className="text-xl font-bold">🦠 {diagnosis.disease}</h3>
-                <p className="font-semibold text-orange-600">
-                  Severity: {diagnosis.severity}
+            {translating && (
+              <p className="text-sm text-muted-foreground mb-3">
+                🔄 Translating to Hindi…
+              </p>
+            )}
+
+            <Card className="mb-4 border-l-4 border-green-600 shadow-sm">
+              <CardContent className="p-5">
+                <h3 className="text-xl font-bold text-green-700">
+                  🦠 {d.disease}
+                </h3>
+                <p className="font-semibold text-orange-600 mt-1">
+                  Severity: {d.severity}
                 </p>
               </CardContent>
             </Card>
 
             <Card className="mb-4">
-              <CardContent>
-                <h4 className="font-semibold">📝 Symptoms</h4>
-                <p className="text-sm">{diagnosis.description}</p>
+              <CardContent className="p-5">
+                <h4 className="font-semibold mb-1">📝 Symptoms</h4>
+                <p>{d.description}</p>
               </CardContent>
             </Card>
 
             <Card className="mb-4">
-              <CardContent>
-                <h4 className="font-semibold">❓ Cause</h4>
-                <p className="text-sm">{diagnosis.cause}</p>
+              <CardContent className="p-5">
+                <h4 className="font-semibold mb-1">❓ Cause</h4>
+                <p>{d.cause}</p>
               </CardContent>
             </Card>
 
-            <Card className="mb-4">
-              <CardContent>
-                <h4 className="font-semibold">💊 Treatment Steps</h4>
-                <ul className="space-y-2 text-sm">
-                  {diagnosis.treatment.map((t, i) => (
-                    <li key={i} className="flex gap-2">
-                      <CheckCircle className="text-green-600" />
-                      <span>{t}</span>
-                    </li>
-                  ))}
+            <Card className="mb-6">
+              <CardContent className="p-5">
+                <h4 className="font-semibold mb-3">💊 Treatment Steps</h4>
+                <ul className="space-y-2">
+                  {Array.isArray(d.treatment) &&
+                    d.treatment.map((t: string, i: number) => (
+                      <li key={i} className="flex gap-2">
+                        <CheckCircle className="text-green-600 mt-1" />
+                        <span>{t}</span>
+                      </li>
+                    ))}
                 </ul>
               </CardContent>
             </Card>
 
-            <p className="text-xs text-red-600 mb-4">
-              ⚠ AI-generated diagnosis. Consult an agriculture officer if
-              symptoms persist.
-            </p>
-
             <div className="flex flex-col sm:flex-row gap-3">
-              <Button variant="outline" onClick={() => setStep("input")}>
-                New Diagnosis
+              <Button
+                variant="outline"
+                onClick={() => setStep("input")}
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" /> New Diagnosis
               </Button>
-              <Button onClick={downloadPDF}>⬇ Download PDF</Button>
+
+              <Button
+                className="bg-green-600 hover:bg-green-700"
+                onClick={downloadPDF}
+              >
+                <Download className="mr-2 h-4 w-4" /> Download Report
+              </Button>
             </div>
           </motion.div>
         )}
