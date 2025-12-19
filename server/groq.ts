@@ -8,9 +8,8 @@ const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY!,
 });
 
-/**
- * 🚫 BANNED / RISKY PESTICIDES (India)
- */
+/* ===================== SAFETY LISTS ===================== */
+
 const BANNED = [
   "endosulfan",
   "monocrotophos",
@@ -23,9 +22,6 @@ const BANNED = [
   "bifenthrin",
 ];
 
-/**
- * ✅ SAFE & COMMONLY USED (STRICT WHITELIST)
- */
 const SAFE_CHEMICALS = [
   "emamectin",
   "emamectin benzoate",
@@ -37,115 +33,162 @@ const SAFE_CHEMICALS = [
   "bt",
 ];
 
-/**
- * 🔒 HARD SAFETY ENFORCER
- */
-function enforceSafety(aiText: string): string {
+/* ===================== HELPERS ===================== */
+
+function inferPlantPart(symptoms: string): "leaf" | "fruit" | "stem" | "root" | "unknown" {
+  const s = symptoms.toLowerCase();
+  if (s.includes("leaf")) return "leaf";
+  if (s.includes("fruit") || s.includes("pod")) return "fruit";
+  if (s.includes("stem") || s.includes("shoot")) return "stem";
+  if (s.includes("root") || s.includes("wilting")) return "root";
+  return "unknown";
+}
+
+function inferIssueType(text: string): "insect" | "disease" | "nutrient" | "environmental" | "unknown" {
+  const t = text.toLowerCase();
+  if (t.includes("hole") || t.includes("tunnel") || t.includes("chew")) return "insect";
+  if (t.includes("rot") || t.includes("fungal") || t.includes("spot")) return "disease";
+  if (t.includes("yellow") || t.includes("deficiency") || t.includes("stunted")) return "nutrient";
+  if (t.includes("heat") || t.includes("drought") || t.includes("waterlogging")) return "environmental";
+  return "unknown";
+}
+
+/* ===================== SAFETY ENFORCER ===================== */
+
+function enforceSafety(aiText: string, symptoms: string): string {
   const lower = aiText.toLowerCase();
 
-  // 🚫 1. Block banned chemicals
+  // 🚫 Hard ban chemicals
   for (const banned of BANNED) {
     if (lower.includes(banned)) {
-      return safeFallback();
+      return smartFallback(inferPlantPart(symptoms));
     }
   }
 
-  // 🚫 2. Block unknown chemicals (whitelist only)
-  const hasOnlySafeChemicals = SAFE_CHEMICALS.some((c) =>
-    lower.includes(c)
-  );
-
-  if (!hasOnlySafeChemicals) {
-    return safeFallback();
-  }
-
-  // 🚫 3. Block species guessing when crop unknown
+  // 🚫 Species & pest group labels
   if (
     lower.includes("helicoverpa") ||
+    lower.includes("leucinodes") ||
     lower.includes("eldana") ||
-    lower.includes("leucinodes")
+    lower.includes("stem borer") ||
+    lower.includes("fruit borer") ||
+    lower.includes("leaf miner")
   ) {
-    return safeFallback();
+    return smartFallback(inferPlantPart(symptoms));
   }
 
-  return aiText;
+  // 🚫 Fertilizer spray misuse
+  if (
+    lower.includes("dap") ||
+    lower.includes("urea") ||
+    lower.includes("npk") ||
+    lower.includes("g/l")
+  ) {
+    return smartFallback(inferPlantPart(symptoms));
+  }
+
+  // ✅ Sanitize wording
+  return aiText
+    .replace(/pesticides?/gi, "control measures")
+    .replace(/Neem oil/gi, "neem oil")
+    .replace(/Spinosad/gi, "spinosad");
 }
 
-/**
- * ✅ SAFE IPM FALLBACK (GENERIC & CORRECT)
- */
-function safeFallback(): string {
-  return JSON.stringify({
-    disease: "Fruit borer (caterpillar pest)",
-    severity: "High",
-    description:
-      "Small holes appear on fruits due to caterpillar feeding. Larvae bore inside the fruits and feed on pulp, causing internal rotting, premature fruit drop, and yield loss.",
+/* ===================== SMART FALLBACK ===================== */
+
+function smartFallback(part: "leaf" | "fruit" | "stem" | "root" | "unknown"): string {
+  const base = {
+    severity: "Moderate",
     cause:
-      "Infestation by fruit-boring caterpillar pests. Warm and humid weather, excessive nitrogen fertilizer, poor field sanitation, and continuous cropping favor infestation.",
+      "The issue may be related to pest attack, disease infection, nutrient imbalance, or environmental stress. Exact diagnosis requires crop and stage details.",
     treatment: [
-      "Chemical control: Spray Emamectin Benzoate 5 SG at 0.4 g per liter of water OR Indoxacarb 14.5 SC at 0.5 ml per liter of water (follow label instructions)",
-      "Biological control: Use neem oil 3–5 ml per liter of water or Bacillus thuringiensis (Bt) as per label instructions",
-      "Cultural practices: Remove and destroy infested fruits, maintain proper spacing, and avoid excessive nitrogen fertilizer",
-      "Safety precautions: Wear gloves and mask during spraying and avoid spraying during flowering or peak sunlight"
+      "Cultural control: Remove affected plant parts and maintain good field sanitation",
+      "Organic support: Use neem oil 3–5 ml per liter of water or biological agents as per recommendation",
+      "Soil and crop management: Maintain balanced nutrition and proper irrigation",
+      "Safety precautions: Wear gloves and mask while spraying and follow label instructions"
     ],
-  });
+  };
+
+  const map = {
+    leaf: {
+      disease: "Leaf-related stress or damage",
+      description: "Leaves show discoloration, spots, holes, or drying symptoms.",
+    },
+    fruit: {
+      disease: "Fruit-related damage or rot",
+      description: "Fruits show rotting, holes, or premature drop.",
+    },
+    stem: {
+      disease: "Stem-related insect or disease damage",
+      description: "Stems show holes, tunneling, or sudden wilting.",
+    },
+    root: {
+      disease: "Root-related rot or stress",
+      description: "Roots show decay leading to poor water and nutrient uptake.",
+    },
+    unknown: {
+      disease: "General crop stress",
+      description: "Crop shows abnormal growth or stress symptoms.",
+    },
+  };
+
+  return JSON.stringify({ ...map[part], ...base });
 }
 
-/**
- * 🌾 Crop Diagnosis API
- */
-export async function getCropDiagnosis(
-  symptoms: string,
-  language: "en" | "hi"
-) {
+/* ===================== MAIN API ===================== */
+
+export async function getCropDiagnosis(symptoms: string, language: "en" | "hi") {
   const prompt = `
-You are a senior agriculture scientist and plant pathologist with over 20 years of experience in Indian farming conditions.
+You are a senior Indian agriculture scientist.
 
-A farmer reports the following crop problem:
+Task:
+1. Identify plant part affected.
+2. Classify issue type (insect / disease / nutrient / environmental).
+3. If unsure, stay generic.
+4. Follow IPM strictly.
+5. NEVER suggest fertilizer sprays or banned chemicals.
 
-"${symptoms}"
-
-Respond ONLY in valid JSON format:
-
+Respond ONLY in JSON:
 {
-  "disease": "Generic pest or disease name (do NOT guess species if crop is unknown)",
-  "severity": "Low / Medium / High / Moderate to Severe",
-  "description": "Clear explanation of visible symptoms",
-  "cause": "Scientific and practical farming causes",
+  "disease": "Generic and safe name",
+  "severity": "Low / Medium / High",
+  "description": "Symptoms explanation",
+  "cause": "Likely scientific cause",
   "treatment": [
-    "Chemical control using ONLY approved Indian insecticides with safe dosage",
-    "Biological or organic control with correct dosage",
-    "Cultural practices for prevention",
+    "Cultural control",
+    "Organic or biological control",
+    "Chemical control ONLY if necessary (safe only)",
     "Safety precautions"
   ]
 }
 
-STRICT RULES:
-- NEVER suggest banned or risky pesticides in India.
-- Do NOT guess pest species unless crop is explicitly mentioned.
-- Prefer integrated pest management (IPM).
-- Use ml per liter or g per liter units only.
-- Neem oil dosage should be 3–5 ml per liter.
-- Spinosad dosage should be around 0.3 ml per liter.
-- Bt is biological control, not chemical.
-- No text outside JSON.
+Rules:
+- Avoid pest species & group names
+- Neem oil: 3–5 ml/L
+- Spinosad: ~0.3 ml/L
+- Bt is biological
+- Avoid the word pesticides
+- No text outside JSON
 
 Output language: ${language === "hi" ? "Hindi" : "English"}
+
+Farmer symptoms:
+"${symptoms}"
 `;
 
   try {
-    const response = await groq.chat.completions.create({
+    const res = await groq.chat.completions.create({
       model: "llama-3.1-8b-instant",
       messages: [{ role: "user", content: prompt }],
-      temperature: 0.2,
+      temperature: 0.1,
     });
 
-    const aiText = response.choices[0]?.message?.content;
-    if (!aiText) throw new Error("Empty AI response");
+    const aiText = res.choices[0]?.message?.content;
+    if (!aiText) throw new Error("Empty response");
 
-    return enforceSafety(aiText);
-  } catch (error) {
-    console.error("Groq error:", error);
-    return safeFallback();
+    return enforceSafety(aiText, symptoms);
+  } catch (err) {
+    console.error(err);
+    return smartFallback(inferPlantPart(symptoms));
   }
 }
