@@ -10,6 +10,7 @@ import {
   AlertTriangle,
   Volume2,
   Square,
+  MapPin,
 } from "lucide-react";
 
 const API_KEY = "bb4c0817cd95ebca24915ae099e8a8af";
@@ -18,94 +19,127 @@ export default function Weather() {
   const [current, setCurrent] = useState<any>(null);
   const [forecast, setForecast] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-
   const [alertText, setAlertText] = useState("");
   const [speaking, setSpeaking] = useState(false);
+  const [locationSource, setLocationSource] = useState("");
 
+  /* ================= GEO ================= */
   useEffect(() => {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        setLocationSource("GPS Location");
         fetchWeather(pos.coords.latitude, pos.coords.longitude);
       },
       () => {
+        setLocationSource("City Fallback");
         fetchWeatherByCity("Delhi");
       }
     );
   }, []);
 
-  /* ================= FETCH WEATHER ================= */
+  /* 🔹 NEW: AUTO REFRESH WEATHER EVERY 30 MINUTES */
+  useEffect(() => {
+    if (!current?.coord) return;
+
+    const interval = setInterval(() => {
+      fetchWeather(current.coord.lat, current.coord.lon);
+    }, 30 * 60 * 1000); // 30 minutes
+
+    return () => clearInterval(interval);
+  }, [current]);
+
+  /* ================= FETCH ================= */
 
   async function fetchWeather(lat: number, lon: number) {
-    const currentRes = await fetch(
-      `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric`
-    );
-    const currentData = await currentRes.json();
+    try {
+      const c = await fetch(
+        `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric`
+      );
+      const currentData = await c.json();
 
-    const forecastRes = await fetch(
-      `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric`
-    );
-    const forecastData = await forecastRes.json();
+      const f = await fetch(
+        `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric`
+      );
+      const forecastData = await f.json();
 
-    setCurrent(currentData);
-    setForecast(forecastData.list.filter((_: any, i: number) => i % 8 === 0));
-    generateFarmerAlert(currentData);
-    setLoading(false);
+      setCurrent(currentData);
+      setForecast(forecastData.list.filter((_: any, i: number) => i % 8 === 0));
+      generateFarmerAlert(currentData);
+    } catch {
+      setAlertText("❌ Mausam data load nahi ho paya");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function fetchWeatherByCity(city: string) {
-    const currentRes = await fetch(
-      `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${API_KEY}&units=metric`
-    );
-    const currentData = await currentRes.json();
+    try {
+      const c = await fetch(
+        `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${API_KEY}&units=metric`
+      );
+      const currentData = await c.json();
 
-    const forecastRes = await fetch(
-      `https://api.openweathermap.org/data/2.5/forecast?q=${city}&appid=${API_KEY}&units=metric`
-    );
-    const forecastData = await forecastRes.json();
+      const f = await fetch(
+        `https://api.openweathermap.org/data/2.5/forecast?q=${city}&appid=${API_KEY}&units=metric`
+      );
+      const forecastData = await f.json();
 
-    setCurrent(currentData);
-    setForecast(forecastData.list.filter((_: any, i: number) => i % 8 === 0));
-    generateFarmerAlert(currentData);
-    setLoading(false);
+      setCurrent(currentData);
+      setForecast(forecastData.list.filter((_: any, i: number) => i % 8 === 0));
+      generateFarmerAlert(currentData);
+    } catch {
+      setAlertText("❌ Shehar ka mausam load nahi ho paya");
+    } finally {
+      setLoading(false);
+    }
   }
 
-  /* ================= FARMER ALERT LOGIC ================= */
+  /* ================= FARMER ALERT ================= */
 
   function generateFarmerAlert(data: any) {
     const temp = data.main.temp;
     const humidity = data.main.humidity;
-    const wind = data.wind.speed;
-    const isRain = data.weather[0].main === "Rain";
+    const windKmH = data.wind.speed * 3.6;
+    const rain = data.weather[0].main === "Rain";
 
-    let message = "";
+    let msg = "Aaj mausam samanya hai. Kheti ka kaam dhyaan se karein.";
 
-    if (isRain) {
-      message = "Aaj baarish ka din hai. Kripya spray aur khaad na daalein.";
-    } else if (humidity > 80) {
-      message = "Aaj hawa mein zyada nami hai. Anaj aur beej ko sookhi jagah rakhein.";
-    } else if (wind > 15) {
-      message = "Aaj hawa tez chal rahi hai. Spray karna theek nahi hai.";
-    } else if (temp >= 20 && temp <= 32) {
-      message = "Aaj fasal kaatne ke liye achha din hai.";
+    if (rain) msg = "Aaj baarish ka din hai. Spray aur khaad na daalein.";
+    else if (humidity > 80) msg = "Zyada nami hai. Beej sookhi jagah rakhein.";
+    else if (windKmH > 15) msg = "Tez hawa hai. Spray avoid karein.";
+    else if (temp >= 20 && temp <= 32)
+      msg = "Aaj fasal kaatne ke liye achha din hai.";
+
+    /* 🔹 NEW: TIME-BASED DYNAMIC ADDITION */
+    const hour = new Date().getHours();
+
+    if (hour < 10) {
+      msg += " Subah ka samay hai, sinchai ka nirnay soch samajh kar lein.";
+    } else if (hour < 16) {
+      msg += " Dopahar mein spray karna uchit nahi hota.";
     } else {
-      message = "Aaj mausam samanya hai. Kheti ka kaam dhyaan se karein.";
+      msg += " Shaam ke samay fasal aur upkaran surakshit rakhein.";
     }
 
-    setAlertText(message);
+    setAlertText(msg);
   }
 
   /* ================= VOICE ================= */
 
   function speakHindi() {
-    const msg = new SpeechSynthesisUtterance(alertText);
-    msg.lang = "hi-IN";
-    msg.rate = 0.9;
-
     speechSynthesis.cancel();
-    speechSynthesis.speak(msg);
-    setSpeaking(true);
+    const u = new SpeechSynthesisUtterance(alertText);
+    u.lang = "hi-IN";
+    u.rate = 0.9;
 
-    msg.onend = () => setSpeaking(false);
+    const voices = speechSynthesis.getVoices();
+    const hi = voices.find((v) => v.lang.startsWith("hi"));
+    if (hi) u.voice = hi;
+
+    u.onstart = () => setSpeaking(true);
+    u.onend = () => setSpeaking(false);
+
+    speechSynthesis.speak(u);
   }
 
   function stopSpeaking() {
@@ -116,7 +150,9 @@ export default function Weather() {
   if (loading) {
     return (
       <Layout>
-        <p className="text-center">🌦️ Mausam jaankari la rahe hain...</p>
+        <p className="text-center text-lg">
+          🌦️ Mausam jaankari la rahe hain...
+        </p>
       </Layout>
     );
   }
@@ -125,75 +161,86 @@ export default function Weather() {
 
   return (
     <Layout>
-      <h2 className="mb-4 text-2xl font-bold">🌾 Aaj Ka Mausam & Salah</h2>
+      <div className="mb-6">
+        <h2 className="text-3xl font-bold text-green-700">
+          🌾 Aaj Ka Mausam & Salah
+        </h2>
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <MapPin className="h-4 w-4" />
+          {current.name}, {current.sys.country} • {locationSource}
+        </p>
+      </div>
 
-      {/* CURRENT WEATHER */}
-      <Card className="mb-5 bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+      <Card className="mb-6 rounded-2xl bg-gradient-to-br from-sky-500 via-blue-500 to-indigo-600 text-white shadow-xl">
         <CardContent className="p-6">
-          <div className="flex justify-between items-center">
-            <h3 className="text-4xl font-bold">
-              {Math.round(current.main.temp)}°C
-            </h3>
-            {current.weather[0].main === "Rain" ? (
-              <CloudRain className="h-14 w-14" />
-            ) : (
-              <Sun className="h-14 w-14 text-yellow-300" />
-            )}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm opacity-80">Temperature</p>
+              <h3 className="text-5xl font-extrabold">
+                {Math.round(current.main.temp)}°C
+              </h3>
+              <p className="capitalize text-sm mt-1">
+                {current.weather[0].description}
+              </p>
+            </div>
+
+            <div className="animate-pulse">
+              {current.weather[0].main === "Rain" ? (
+                <CloudRain className="h-20 w-20 opacity-90" />
+              ) : (
+                <Sun className="h-20 w-20 text-yellow-300 drop-shadow-[0_0_15px_rgba(255,255,0,0.8)]" />
+              )}
+            </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3 mt-4 text-center text-sm">
-            <Info icon={<Wind />} label="Hawa" value={`${current.wind.speed} km/h`} />
-            <Info icon={<Droplets />} label="Nami" value={`${current.main.humidity}%`} />
-            <Info icon={<ThermometerSun />} label="Stithi" value={current.weather[0].main} />
+          <div className="mt-6 grid grid-cols-3 gap-4 text-center">
+            <Info icon={<Wind className="mx-auto" />} label="Hawa" value={`${(current.wind.speed * 3.6).toFixed(1)} km/h`} />
+            <Info icon={<Droplets className="mx-auto" />} label="Nami" value={`${current.main.humidity}%`} />
+            <Info icon={<ThermometerSun className="mx-auto" />} label="Stithi" value={current.weather[0].main} />
           </div>
         </CardContent>
       </Card>
 
-      {/* 🌾 FARMER SIMPLE ALERT */}
-      <Card className="mb-6 border-l-4 border-l-green-600 bg-green-50">
-        <CardContent className="p-4">
-          <h4 className="font-bold flex gap-2 mb-2">
-            <AlertTriangle className="h-4 w-4" /> Kisan Salah
+      <Card className="mb-6 rounded-xl bg-green-50 border-l-8 border-green-600 shadow-md">
+        <CardContent className="p-5">
+          <h4 className="flex items-center gap-2 font-bold text-green-800 mb-2">
+            <AlertTriangle className="h-5 w-5" />
+            Kisan Salah
           </h4>
 
-          <p className="text-sm mb-3">{alertText}</p>
+          <p className="mb-4 text-gray-800 leading-relaxed">
+            {alertText}
+          </p>
 
           {!speaking ? (
-            <button
-              onClick={speakHindi}
-              className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg"
-            >
-              <Volume2 className="h-4 w-4" /> Suno Salah
+            <button onClick={speakHindi} className="flex items-center gap-2 rounded-full bg-green-600 px-5 py-2.5 font-semibold text-white shadow hover:bg-green-700 transition">
+              <Volume2 className="h-5 w-5" />
+              Suno Salah
             </button>
           ) : (
-            <button
-              onClick={stopSpeaking}
-              className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg"
-            >
-              <Square className="h-4 w-4" /> Band Karein
+            <button onClick={stopSpeaking} className="flex items-center gap-2 rounded-full bg-red-600 px-5 py-2.5 font-semibold text-white shadow hover:bg-red-700 transition">
+              <Square className="h-5 w-5" />
+              Band Karein
             </button>
           )}
         </CardContent>
       </Card>
 
-      {/* 📅 5-DAY FUTURE WEATHER */}
-      <h3 className="mb-3 text-lg font-bold">📅 Aane Wale 5 Din Ka Mausam</h3>
+      <h3 className="mb-3 text-xl font-bold">
+        📅 Aane Wale 5 Din Ka Mausam
+      </h3>
 
       <div className="space-y-3">
         {forecast.map((day, i) => (
-          <div
-            key={i}
-            className="flex justify-between bg-white p-4 rounded-xl border"
-          >
+          <div key={i} className="flex items-center justify-between rounded-xl border bg-white p-4 shadow-sm">
             <div>
               <p className="font-semibold">
                 {new Date(day.dt_txt).toDateString()}
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs capitalize text-muted-foreground">
                 {day.weather[0].description}
               </p>
             </div>
-
             <div className="text-right">
               <p className="font-bold">{Math.round(day.main.temp)}°C</p>
               <p className="text-xs">Nami {day.main.humidity}%</p>
@@ -205,11 +252,12 @@ export default function Weather() {
   );
 }
 
-/* ===== Small Component ===== */
+/* ================= INFO CARD ================= */
+
 function Info({ icon, label, value }: any) {
   return (
-    <div className="bg-white/10 rounded-lg p-3">
-      <div className="mx-auto mb-1">{icon}</div>
+    <div className="rounded-lg bg-white/10 p-3 flex flex-col items-center gap-1">
+      {icon}
       <p className="text-xs">{label}</p>
       <p className="font-bold">{value}</p>
     </div>
