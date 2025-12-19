@@ -120,47 +120,119 @@ export default function Diagnosis() {
     speechSynthesis.speak(utterance);
   };
 
-  /* ================= PDF ================= */
-  const downloadPDF = () => {
-    const d = language === "hi" && translated ? translated : diagnosis;
-    if (!d) return;
+  /* ================= IMPROVED PDF ================= */
+    const downloadPDF = () => {
+      const d = language === "hi" && translated ? translated : diagnosis;
+      if (!d) return;
 
-    const pdf = new jsPDF();
-    let y = 20;
+      const pdf = new jsPDF("p", "mm", "a4");
 
-    pdf.setFontSize(18);
-    pdf.text("EduFarma AI – Crop Diagnosis Report", 20, y);
-    y += 12;
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
 
-    pdf.setFontSize(12);
-    pdf.text(`Date: ${new Date().toLocaleDateString()}`, 20, y);
-    y += 10;
+      let y = 20;
 
-    pdf.text(`Disease: ${d.disease}`, 20, y);
-    y += 8;
-    pdf.text(`Severity: ${d.severity}`, 20, y);
-    y += 12;
+      /* ===== HEADER ===== */
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(18);
+      pdf.text("EduFarma AI – Crop Diagnosis Report", pageWidth / 2, y, {
+        align: "center",
+      });
 
-    pdf.text("Description:", 20, y);
-    y += 6;
-    pdf.text(d.description, 20, y, { maxWidth: 170 });
-    y += 14;
+      y += 8;
 
-    pdf.text("Cause:", 20, y);
-    y += 6;
-    pdf.text(d.cause, 20, y, { maxWidth: 170 });
-    y += 14;
+      pdf.setFontSize(11);
+      pdf.setFont("helvetica", "normal");
+      pdf.text(
+        `Generated on: ${new Date().toLocaleString()}`,
+        pageWidth / 2,
+        y,
+        { align: "center" }
+      );
 
-    pdf.text("Treatment Steps:", 20, y);
-    y += 6;
+      y += 12;
 
-    d.treatment.forEach((t: string, i: number) => {
-      pdf.text(`${i + 1}. ${t}`, 22, y, { maxWidth: 165 });
+      /* ===== TOP BOX CONTENT ===== */
+      pdf.setFontSize(12);
+      pdf.setFont("helvetica", "bold");
+
+      const symptomsText = pdf.splitTextToSize(
+        d.description,
+        pageWidth - 50
+      );
+
+      const boxHeight = 30 + symptomsText.length * 6;
+
+      pdf.rect(15, y, pageWidth - 30, boxHeight);
+
+      let boxY = y + 8;
+
+      pdf.text("Disease:", 20, boxY);
+      pdf.setFont("helvetica", "normal");
+      pdf.text(d.disease, 50, boxY);
+
+      boxY += 8;
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Severity:", 20, boxY);
+      pdf.setFont("helvetica", "normal");
+      pdf.text(d.severity, 50, boxY);
+
+      boxY += 8;
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Symptoms:", 20, boxY);
+      pdf.setFont("helvetica", "normal");
+      pdf.text(symptomsText, 50, boxY);
+
+      y += boxHeight + 12;
+
+      /* ===== CAUSE ===== */
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(14);
+      pdf.text("Cause", 15, y);
+
       y += 7;
-    });
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(12);
+      pdf.text(
+        pdf.splitTextToSize(d.cause, pageWidth - 30),
+        15,
+        y
+      );
 
-    pdf.save("EduFarma_Diagnosis_Report.pdf");
-  };
+      y += 20;
+
+      /* ===== TREATMENT ===== */
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(14);
+      pdf.text("Treatment Steps", 15, y);
+
+      y += 8;
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(12);
+
+      d.treatment.forEach((step: string, index: number) => {
+        const wrapped = pdf.splitTextToSize(
+          `${index + 1}. ${step}`,
+          pageWidth - 35
+        );
+        pdf.text(wrapped, 18, y);
+        y += wrapped.length * 6 + 2;
+      });
+
+      /* ===== FOOTER ===== */
+      pdf.setFontSize(10);
+      pdf.setTextColor(120);
+      pdf.text(
+        "This report is auto-generated using AI-based analysis.\nMade by QuantumCoders – NIST University",
+        pageWidth / 2,
+        pageHeight - 15,
+        { align: "center" }
+      );
+
+      /* ===== FILE NAME ===== */
+      const safeName = d.disease.replace(/[^a-zA-Z0-9]/g, "_");
+      pdf.save(`${safeName}_Diagnosis_Report.pdf`);
+    };
 
   const d = language === "hi" && translated ? translated : diagnosis;
 

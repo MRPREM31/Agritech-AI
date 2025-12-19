@@ -4,5 +4,9 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+<<<<<<< HEAD
 .env
 .vscode/
+=======
+.env
+>>>>>>> 95ad0dea4c59adaf1b3ae08bf2207ac83917465e
