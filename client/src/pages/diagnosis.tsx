@@ -114,125 +114,123 @@ export default function Diagnosis() {
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = language === "hi" ? "hi-IN" : "en-US";
-    utterance.onend = () => setIsSpeaking(false);
+
+    utterance.onend = () => {
+      setIsSpeaking(false);
+    };
 
     setIsSpeaking(true);
     speechSynthesis.speak(utterance);
   };
 
-  /* ================= IMPROVED PDF ================= */
-    const downloadPDF = () => {
-      const d = language === "hi" && translated ? translated : diagnosis;
-      if (!d) return;
+  /* ================= STOP VOICE (NEW) ================= */
+  const stopSpeaking = () => {
+    speechSynthesis.cancel();
+    setIsSpeaking(false);
+  };
 
-      const pdf = new jsPDF("p", "mm", "a4");
+  /* ================= PDF ================= */
+  const downloadPDF = () => {
+    const d = language === "hi" && translated ? translated : diagnosis;
+    if (!d) return;
 
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
+    const pdf = new jsPDF("p", "mm", "a4");
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    let y = 20;
 
-      let y = 20;
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(18);
+    pdf.text("EduFarma AI – Crop Diagnosis Report", pageWidth / 2, y, {
+      align: "center",
+    });
 
-      /* ===== HEADER ===== */
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(18);
-      pdf.text("EduFarma AI – Crop Diagnosis Report", pageWidth / 2, y, {
-        align: "center",
-      });
+    y += 8;
+    pdf.setFontSize(11);
+    pdf.setFont("helvetica", "normal");
+    pdf.text(
+      `Generated on: ${new Date().toLocaleString()}`,
+      pageWidth / 2,
+      y,
+      { align: "center" }
+    );
 
-      y += 8;
+    y += 12;
 
-      pdf.setFontSize(11);
-      pdf.setFont("helvetica", "normal");
-      pdf.text(
-        `Generated on: ${new Date().toLocaleString()}`,
-        pageWidth / 2,
-        y,
-        { align: "center" }
+    pdf.setFontSize(12);
+    pdf.setFont("helvetica", "bold");
+
+    const symptomsText = pdf.splitTextToSize(
+      d.description,
+      pageWidth - 50
+    );
+
+    const boxHeight = 30 + symptomsText.length * 6;
+    pdf.rect(15, y, pageWidth - 30, boxHeight);
+
+    let boxY = y + 8;
+    pdf.text("Disease:", 20, boxY);
+    pdf.setFont("helvetica", "normal");
+    pdf.text(d.disease, 50, boxY);
+
+    boxY += 8;
+    pdf.setFont("helvetica", "bold");
+    pdf.text("Severity:", 20, boxY);
+    pdf.setFont("helvetica", "normal");
+    pdf.text(d.severity, 50, boxY);
+
+    boxY += 8;
+    pdf.setFont("helvetica", "bold");
+    pdf.text("Symptoms:", 20, boxY);
+    pdf.setFont("helvetica", "normal");
+    pdf.text(symptomsText, 50, boxY);
+
+    y += boxHeight + 12;
+
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(14);
+    pdf.text("Cause", 15, y);
+
+    y += 7;
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(12);
+    pdf.text(
+      pdf.splitTextToSize(d.cause, pageWidth - 30),
+      15,
+      y
+    );
+
+    y += 20;
+
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(14);
+    pdf.text("Treatment Steps", 15, y);
+
+    y += 8;
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(12);
+
+    d.treatment.forEach((step: string, index: number) => {
+      const wrapped = pdf.splitTextToSize(
+        `${index + 1}. ${step}`,
+        pageWidth - 35
       );
+      pdf.text(wrapped, 18, y);
+      y += wrapped.length * 6 + 2;
+    });
 
-      y += 12;
+    pdf.setFontSize(10);
+    pdf.setTextColor(120);
+    pdf.text(
+      "This report is auto-generated using AI-based analysis.\nMade by QuantumCoders – NIST University",
+      pageWidth / 2,
+      pageHeight - 15,
+      { align: "center" }
+    );
 
-      /* ===== TOP BOX CONTENT ===== */
-      pdf.setFontSize(12);
-      pdf.setFont("helvetica", "bold");
-
-      const symptomsText = pdf.splitTextToSize(
-        d.description,
-        pageWidth - 50
-      );
-
-      const boxHeight = 30 + symptomsText.length * 6;
-
-      pdf.rect(15, y, pageWidth - 30, boxHeight);
-
-      let boxY = y + 8;
-
-      pdf.text("Disease:", 20, boxY);
-      pdf.setFont("helvetica", "normal");
-      pdf.text(d.disease, 50, boxY);
-
-      boxY += 8;
-      pdf.setFont("helvetica", "bold");
-      pdf.text("Severity:", 20, boxY);
-      pdf.setFont("helvetica", "normal");
-      pdf.text(d.severity, 50, boxY);
-
-      boxY += 8;
-      pdf.setFont("helvetica", "bold");
-      pdf.text("Symptoms:", 20, boxY);
-      pdf.setFont("helvetica", "normal");
-      pdf.text(symptomsText, 50, boxY);
-
-      y += boxHeight + 12;
-
-      /* ===== CAUSE ===== */
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(14);
-      pdf.text("Cause", 15, y);
-
-      y += 7;
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(12);
-      pdf.text(
-        pdf.splitTextToSize(d.cause, pageWidth - 30),
-        15,
-        y
-      );
-
-      y += 20;
-
-      /* ===== TREATMENT ===== */
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(14);
-      pdf.text("Treatment Steps", 15, y);
-
-      y += 8;
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(12);
-
-      d.treatment.forEach((step: string, index: number) => {
-        const wrapped = pdf.splitTextToSize(
-          `${index + 1}. ${step}`,
-          pageWidth - 35
-        );
-        pdf.text(wrapped, 18, y);
-        y += wrapped.length * 6 + 2;
-      });
-
-      /* ===== FOOTER ===== */
-      pdf.setFontSize(10);
-      pdf.setTextColor(120);
-      pdf.text(
-        "This report is auto-generated using AI-based analysis.\nMade by QuantumCoders – NIST University",
-        pageWidth / 2,
-        pageHeight - 15,
-        { align: "center" }
-      );
-
-      /* ===== FILE NAME ===== */
-      const safeName = d.disease.replace(/[^a-zA-Z0-9]/g, "_");
-      pdf.save(`${safeName}_Diagnosis_Report.pdf`);
-    };
+    const safeName = d.disease.replace(/[^a-zA-Z0-9]/g, "_");
+    pdf.save(`${safeName}_Diagnosis_Report.pdf`);
+  };
 
   const d = language === "hi" && translated ? translated : diagnosis;
 
@@ -244,7 +242,6 @@ export default function Diagnosis() {
       </h2>
 
       <AnimatePresence mode="wait">
-        {/* INPUT */}
         {step === "input" && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <Card className="shadow-md">
@@ -294,7 +291,6 @@ export default function Diagnosis() {
           </motion.div>
         )}
 
-        {/* ANALYZING */}
         {step === "analyzing" && (
           <motion.div className="text-center py-24">
             <ScanLine className="mx-auto animate-pulse mb-4 text-green-600" />
@@ -304,7 +300,6 @@ export default function Diagnosis() {
           </motion.div>
         )}
 
-        {/* RESULT */}
         {step === "result" && d && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
@@ -321,8 +316,13 @@ export default function Diagnosis() {
                 <option value="hi">Hindi</option>
               </select>
 
-              <Button variant="outline" onClick={speakDiagnosis}>
-                <Volume2 className="mr-2 h-4 w-4" /> Speak
+              {/* 🔊 SPEAK / STOP BUTTON */}
+              <Button
+                variant="outline"
+                onClick={isSpeaking ? stopSpeaking : speakDiagnosis}
+              >
+                <Volume2 className="mr-2 h-4 w-4" />
+                {isSpeaking ? "Stop" : "Speak"}
               </Button>
             </div>
 
@@ -361,22 +361,18 @@ export default function Diagnosis() {
               <CardContent className="p-5">
                 <h4 className="font-semibold mb-3">💊 Treatment Steps</h4>
                 <ul className="space-y-2">
-                  {Array.isArray(d.treatment) &&
-                    d.treatment.map((t: string, i: number) => (
-                      <li key={i} className="flex gap-2">
-                        <CheckCircle className="text-green-600 mt-1" />
-                        <span>{t}</span>
-                      </li>
-                    ))}
+                  {d.treatment.map((t: string, i: number) => (
+                    <li key={i} className="flex gap-2">
+                      <CheckCircle className="text-green-600 mt-1" />
+                      <span>{t}</span>
+                    </li>
+                  ))}
                 </ul>
               </CardContent>
             </Card>
 
             <div className="flex flex-col sm:flex-row gap-3">
-              <Button
-                variant="outline"
-                onClick={() => setStep("input")}
-              >
+              <Button variant="outline" onClick={() => setStep("input")}>
                 <ArrowLeft className="mr-2 h-4 w-4" /> New Diagnosis
               </Button>
 
