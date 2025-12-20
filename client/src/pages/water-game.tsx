@@ -82,6 +82,14 @@ export default function WaterGame() {
     setGameState("gameOver");
   };
 
+  /* ---------------- WATER DEPLETED CHECK ---------------- */
+  useEffect(() => {
+    if (gameState === "playing" && water <= 0) {
+      console.log('Water depleted! Game Over. Score:', score);
+      setGameState("gameOver");
+    }
+  }, [water, gameState]);
+
   return (
     <Layout>
       <div className="max-w-2xl mx-auto">
@@ -181,10 +189,14 @@ export default function WaterGame() {
               )}
 
               <h3 className="text-3xl font-bold">
-                {score >= 50 ? "🎉 You Won!" : "💥 Water Missed!"}
+                {score >= 50 ? "🎉 You Won!" : water <= 0 ? "💧 Water Tank Empty!" : "💥 Water Missed!"}
               </h3>
 
               <p className="text-5xl font-bold">{score}</p>
+
+              {water <= 0 && score < 50 && (
+                <p className="text-lg font-semibold text-red-600">Water depleted! Save more drops next time.</p>
+              )}
 
               {score >= 50 && (
                 <p className="text-lg font-bold text-primary">+100 Coins Earned! 🎉</p>
@@ -192,7 +204,12 @@ export default function WaterGame() {
 
               <Card className="bg-amber-50 border-2 border-amber-200">
                 <CardContent className="p-5 text-sm">
-                  In farming, every drop matters. Missing water means loss 🌱💧
+                  {score >= 50 
+                    ? "Excellent work! You've saved enough water for the farm! 🌾💧"
+                    : water <= 0
+                    ? "The water tank is empty! You need to collect more drops before the tank runs dry. 🌱"
+                    : "In farming, every drop matters. Missing water means loss 🌱💧"
+                  }
                 </CardContent>
               </Card>
 
