@@ -4,8 +4,10 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Trophy, Star, BookOpen, ChevronRight, Sprout, CloudRain, Droplets, Tractor } from "lucide-react";
 import { Link } from "wouter";
+import { useCoins } from "@/hooks/use-coins";
 
 export default function Learn() {
+  const { coins } = useCoins();
   const games = [
     {
       id: "disease",
@@ -65,7 +67,7 @@ export default function Learn() {
         <h2 className="font-heading text-2xl lg:text-3xl font-bold text-secondary">Learn & Play</h2>
         <div className="flex items-center gap-1 rounded-full bg-accent px-3 py-1 text-sm font-bold text-accent-foreground shadow-sm">
           <Star className="h-4 w-4 fill-current" />
-          <span>250 Pts</span>
+          <span>{coins} Pts</span>
         </div>
       </div>
 

@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import { Link } from "wouter";
 import { Droplets, RotateCcw, Trophy } from "lucide-react";
+import { useCoins } from "@/hooks/use-coins";
 
 type Drop = {
   id: number;
@@ -19,6 +20,7 @@ export default function WaterGame() {
   const [water, setWater] = useState(100);
   const [drops, setDrops] = useState<Drop[]>([]);
   const idRef = useRef(0);
+  const { addCoins } = useCoins();
 
   /* ---------------- START GAME ---------------- */
   const startGame = () => {
@@ -173,6 +175,10 @@ export default function WaterGame() {
 
               <p className="text-5xl font-bold">{score}</p>
 
+              {score >= 50 && (
+                <p className="text-lg font-bold text-primary">+100 Coins Earned! 🎉</p>
+              )}
+
               <Card className="bg-amber-50 border-2 border-amber-200">
                 <CardContent className="p-5 text-sm">
                   In farming, every drop matters. Missing water means loss 🌱💧
@@ -180,12 +186,12 @@ export default function WaterGame() {
               </Card>
 
               <div className="flex gap-3">
-                <Button className="flex-1" onClick={startGame}>
+                <Button className="flex-1" onClick={() => { if (score >= 50) addCoins(100); setTimeout(() => startGame(), 100); }}>
                   <RotateCcw className="mr-2 h-4 w-4" />
                   Play Again
                 </Button>
                 <Link href="/learn">
-                  <Button variant="outline" className="flex-1">
+                  <Button variant="outline" className="flex-1" onClick={() => { if (score >= 50) addCoins(100); }}>
                     Back
                   </Button>
                 </Link>

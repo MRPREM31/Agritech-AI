@@ -6,6 +6,7 @@ import { useRoute, Link } from "wouter";
 import { CheckCircle, XCircle, ArrowRight, RotateCcw, Trophy } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
+import { useCoins } from "@/hooks/use-coins";
 
 export default function Game() {
   const [, params] = useRoute("/game/:id");
@@ -13,6 +14,7 @@ export default function Game() {
   const [score, setScore] = useState(0);
   const [showResult, setShowResult] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const { addCoins } = useCoins();
   const [isAnswered, setIsAnswered] = useState(false);
 
   // Mock questions
@@ -73,6 +75,13 @@ export default function Game() {
     setIsAnswered(false);
   };
 
+  const handleGameEnd = () => {
+    // Award coins based on score (10 coins per correct answer)
+    if (score > 0) {
+      addCoins(score * 10);
+    }
+  };
+
   if (showResult) {
     return (
       <Layout>
@@ -86,14 +95,15 @@ export default function Game() {
           </motion.div>
           
           <h2 className="mb-2 font-heading text-3xl font-bold text-secondary">Great Job!</h2>
-          <p className="mb-8 text-muted-foreground">You scored {score} out of {questions.length}</p>
+          <p className="mb-2 text-muted-foreground">You scored {score} out of {questions.length}</p>
+          <p className="mb-8 text-lg font-bold text-primary">+{score * 10} Coins Earned! 🎉</p>
           
           <div className="w-full max-w-xs space-y-3">
-            <Button onClick={resetGame} size="lg" className="w-full">
+            <Button onClick={() => { handleGameEnd(); setTimeout(() => resetGame(), 50); }} size="lg" className="w-full">
               <RotateCcw className="mr-2 h-4 w-4" /> Play Again
             </Button>
             <Link href="/learn">
-              <Button variant="outline" size="lg" className="w-full">
+              <Button variant="outline" size="lg" className="w-full" onClick={handleGameEnd}>
                 Back to Menu
               </Button>
             </Link>

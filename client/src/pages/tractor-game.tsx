@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import { Link } from "wouter";
 import { RotateCcw, Trophy } from "lucide-react";
+import { useCoins } from "@/hooks/use-coins";
 
 export default function TractorGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -15,6 +16,7 @@ export default function TractorGame() {
   const [score, setScore] = useState(0);
   const [gameTime, setGameTime] = useState(30);
   const [gameActive, setGameActive] = useState(false);
+  const { addCoins } = useCoins();
 
   const TRACTOR_SPEED = 18;
   const CROP_SPEED = 2;
@@ -234,12 +236,16 @@ export default function TractorGame() {
               <h3 className="text-3xl font-bold">{score >= 40 ? "Excellent Harvest!" : "Good Try!"}</h3>
               <p className="text-5xl font-bold">{score}</p>
 
+              {score >= 40 && (
+                <p className="text-lg font-bold text-primary">+80 Coins Earned! 🎉</p>
+              )}
+
               <div className="flex gap-3">
-                <Button className="flex-1" onClick={startGame}>
+                <Button className="flex-1" onClick={() => { if (score >= 40) addCoins(80); startGame(); }}>
                   <RotateCcw className="mr-2 h-4 w-4" /> Play Again
                 </Button>
                 <Link href="/learn">
-                  <Button variant="outline" className="flex-1">
+                  <Button variant="outline" className="flex-1" onClick={() => { if (score >= 40) addCoins(80); }}>
                     Back
                   </Button>
                 </Link>
