@@ -210,17 +210,31 @@ export default function TractorGame() {
 
           {gameState === "playing" && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-              <div className="flex justify-between font-bold">
-                <span>Score: {score}</span>
+              <div className="flex justify-between font-bold items-center">
+                <div className="flex flex-col gap-1">
+                  <span>Score: {score}</span>
+                  <span className="text-xs text-green-600">Target: 40+ crops to win 🎯</span>
+                </div>
                 <span>⏱️ {gameTime}s</span>
               </div>
+
+              {/* Motivational Message */}
+              <Card className="bg-green-50 border-2 border-green-200">
+                <CardContent className="p-3 text-center text-sm font-semibold text-green-700">
+                  {score < 20 
+                    ? "🌾 Every crop is valuable! Harvest carefully and collect more! 🌾" 
+                    : score < 40 
+                    ? "⚡ You're doing great! Keep collecting to reach 40+ crops! ⚡"
+                    : "🏆 Excellent work! You're crushing it! 🏆"}
+                </CardContent>
+              </Card>
 
               <Card className="border-2 border-green-300">
                 <canvas
                   ref={canvasRef}
                   width={600}
                   height={400}
-                  tabIndex={0}   // 👈 VERY IMPORTANT
+                  tabIndex={0}
                   className="w-full outline-none"
                 />
               </Card>
@@ -244,11 +258,24 @@ export default function TractorGame() {
               ) : (
                 <div className="text-6xl">🚜</div>
               )}
-              <h3 className="text-3xl font-bold">{score >= 40 ? "Excellent Harvest!" : "Good Try!"}</h3>
+              <h3 className="text-3xl font-bold">{score >= 40 ? "🎉 Excellent Harvest!" : "⚠️ Harvest Incomplete!"}</h3>
               <p className="text-5xl font-bold">{score}</p>
 
-              {score >= 40 && (
-                <p className="text-lg font-bold text-primary">+80 Coins Earned! 🎉</p>
+              {score >= 40 ? (
+                <>
+                  <p className="text-lg font-bold text-primary">+80 Coins Earned! 🎉</p>
+                  <Card className="bg-green-50 border-2 border-green-200">
+                    <CardContent className="p-4 text-sm text-green-700 font-semibold">
+                      "Perfect harvest! You've collected enough crops for the season. Well done, farmer! 🌾"
+                    </CardContent>
+                  </Card>
+                </>
+              ) : (
+                <Card className="bg-yellow-50 border-2 border-yellow-200">
+                  <CardContent className="p-4 text-sm text-yellow-700 font-semibold">
+                    "Every crop is valuable! Don't waste any crops—harvest properly and collect more next time. Remember: {40 - score} more crops are needed to reach the target! 🌾"
+                  </CardContent>
+                </Card>
               )}
 
               <div className="flex gap-3">
