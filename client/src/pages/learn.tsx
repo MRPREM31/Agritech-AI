@@ -2,9 +2,19 @@ import Layout from "@/components/Layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Trophy, Star, BookOpen, ChevronRight, Sprout, CloudRain, Droplets, Tractor, RotateCcw } from "lucide-react";
 import { Link } from "wouter";
 import { useCoins } from "@/hooks/use-coins";
+import { useState } from "react";
 
 const coinGlowStyle = `
   @keyframes coinBlink {
@@ -18,6 +28,8 @@ const coinGlowStyle = `
 
 export default function Learn() {
   const { coins, resetCoins } = useCoins();
+  const [showResetDialog, setShowResetDialog] = useState(false);
+  
   const games = [
     {
       id: "disease",
@@ -27,26 +39,6 @@ export default function Learn() {
       color: "text-green-600",
       bg: "bg-green-100",
       progress: 60,
-      link: "/game/daily"
-    },
-    {
-      id: "soil",
-      title: "Soil Master",
-      desc: "Fertilizer & soil knowledge",
-      icon: Trophy,
-      color: "text-amber-600",
-      bg: "bg-amber-100",
-      progress: 30,
-      link: "/game/daily"
-    },
-    {
-      id: "weather",
-      title: "Weather Wise",
-      desc: "Predict & prepare",
-      icon: CloudRain,
-      color: "text-blue-600",
-      bg: "bg-blue-100",
-      progress: 0,
       link: "/game/daily"
     },
     {
@@ -84,11 +76,7 @@ export default function Learn() {
           </div>
           {/* Reset Button */}
           <Button 
-            onClick={() => {
-              if (window.confirm('Are you sure you want to reset your coins to 0? This cannot be undone.')) {
-                resetCoins();
-              }
-            }} 
+            onClick={() => setShowResetDialog(true)} 
             variant="outline" 
             size="sm"
             className="border-red-500 text-red-500 hover:bg-red-50 hover:text-red-600"
@@ -96,6 +84,30 @@ export default function Learn() {
           >
             <RotateCcw className="h-4 w-4" />
           </Button>
+
+          {/* Professional Reset Confirmation Dialog */}
+          <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Reset Coins</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to reset your coins to 0? This cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <div className="flex justify-end gap-3">
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction 
+                  onClick={() => {
+                    resetCoins();
+                    setShowResetDialog(false);
+                  }}
+                  className="bg-red-500 hover:bg-red-600"
+                >
+                  Reset
+                </AlertDialogAction>
+              </div>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
 
