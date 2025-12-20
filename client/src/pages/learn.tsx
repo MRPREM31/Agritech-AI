@@ -2,12 +2,22 @@ import Layout from "@/components/Layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { Trophy, Star, BookOpen, ChevronRight, Sprout, CloudRain, Droplets, Tractor } from "lucide-react";
+import { Trophy, Star, BookOpen, ChevronRight, Sprout, CloudRain, Droplets, Tractor, RotateCcw } from "lucide-react";
 import { Link } from "wouter";
 import { useCoins } from "@/hooks/use-coins";
 
+const coinGlowStyle = `
+  @keyframes coinBlink {
+    0%, 100% { filter: drop-shadow(0 0 4px rgba(251, 146, 60, 0.5)); transform: scale(1); }
+    50% { filter: drop-shadow(0 0 12px rgba(251, 146, 60, 0.9)); transform: scale(1.1); }
+  }
+  .coin-glow {
+    animation: coinBlink 2s ease-in-out infinite;
+  }
+`;
+
 export default function Learn() {
-  const { coins } = useCoins();
+  const { coins, resetCoins } = useCoins();
   const games = [
     {
       id: "disease",
@@ -63,11 +73,29 @@ export default function Learn() {
 
   return (
     <Layout>
-      <div className="mb-6 flex items-center justify-between">
+      <style>{coinGlowStyle}</style>
+      <div className="mb-6 flex items-center justify-between gap-3">
         <h2 className="font-heading text-2xl lg:text-3xl font-bold text-secondary">Learn & Play</h2>
-        <div className="flex items-center gap-1 rounded-full bg-accent px-3 py-1 text-sm font-bold text-accent-foreground shadow-sm">
-          <Star className="h-4 w-4 fill-current" />
-          <span>{coins} Pts</span>
+        <div className="flex items-center gap-2">
+          {/* Coin Display */}
+          <div className="flex items-center gap-1 rounded-full bg-orange-500 px-4 py-2 text-sm font-bold text-white shadow-lg coin-glow">
+            <Star className="h-5 w-5 fill-current" />
+            <span>{coins} Pts</span>
+          </div>
+          {/* Reset Button */}
+          <Button 
+            onClick={() => {
+              if (window.confirm('Are you sure you want to reset your coins to 0? This cannot be undone.')) {
+                resetCoins();
+              }
+            }} 
+            variant="outline" 
+            size="sm"
+            className="border-red-500 text-red-500 hover:bg-red-50 hover:text-red-600"
+            title="Reset coins to zero"
+          >
+            <RotateCcw className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
