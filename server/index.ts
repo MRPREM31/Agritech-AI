@@ -94,9 +94,7 @@ app.use((req, res, next) => {
 httpServer.listen(
   {
     port,
-    ...(process.env.NODE_ENV === "production"
-      ? { host: "0.0.0.0" }
-      : {}),
+    host: "0.0.0.0",
   },
   () => {
     log(`🚀 Server running on port ${port}`);
