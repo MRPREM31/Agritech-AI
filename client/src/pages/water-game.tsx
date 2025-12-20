@@ -21,6 +21,7 @@ export default function WaterGame() {
   const [drops, setDrops] = useState<Drop[]>([]);
   const idRef = useRef(0);
   const { addCoins } = useCoins();
+  const coinsAddedRef = useRef(false);
 
   /* ---------------- START GAME ---------------- */
   const startGame = () => {
@@ -28,7 +29,17 @@ export default function WaterGame() {
     setWater(100);
     setDrops([]);
     setGameState("playing");
+    coinsAddedRef.current = false;
   };
+
+  // Add coins automatically when game is won
+  useEffect(() => {
+    if (gameState === "gameOver" && !coinsAddedRef.current && score >= 50) {
+      coinsAddedRef.current = true;
+      console.log('Water Game Won - Awarding 100 coins for score:', score);
+      addCoins(100);
+    }
+  }, [gameState, score, addCoins]);
 
   /* ---------------- SPAWN DROPS ---------------- */
   useEffect(() => {
@@ -130,7 +141,7 @@ export default function WaterGame() {
               </div>
 
               {/* Game Area */}
-              <Card className="h-96 relative overflow-hidden bg-gradient-to-b from-blue-100 to-blue-50 border-2 border-blue-300">
+              <Card className="h-96 relative overflow-hidden bg-linear-to-b from-blue-100 to-blue-50 border-2 border-blue-300">
                 <CardContent className="absolute inset-0">
                   {drops.map(drop => (
                     <motion.div
@@ -186,12 +197,12 @@ export default function WaterGame() {
               </Card>
 
               <div className="flex gap-3">
-                <Button className="flex-1" onClick={() => { if (score >= 50) addCoins(100); setTimeout(() => startGame(), 100); }}>
+                <Button className="flex-1" onClick={() => startGame()}>
                   <RotateCcw className="mr-2 h-4 w-4" />
                   Play Again
                 </Button>
                 <Link href="/learn">
-                  <Button variant="outline" className="flex-1" onClick={() => { if (score >= 50) addCoins(100); }}>
+                  <Button variant="outline" className="flex-1">
                     Back
                   </Button>
                 </Link>

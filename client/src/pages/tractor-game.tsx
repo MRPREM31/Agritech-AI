@@ -17,6 +17,7 @@ export default function TractorGame() {
   const [gameTime, setGameTime] = useState(30);
   const [gameActive, setGameActive] = useState(false);
   const { addCoins } = useCoins();
+  const coinsAddedRef = useRef(false);
 
   const TRACTOR_SPEED = 18;
   const CROP_SPEED = 2;
@@ -26,7 +27,17 @@ export default function TractorGame() {
     setGameTime(30);
     setGameActive(true);
     setGameState("playing");
+    coinsAddedRef.current = false;
   };
+
+  // Add coins automatically when game is won
+  useEffect(() => {
+    if (gameState === "gameOver" && !coinsAddedRef.current && score >= 40) {
+      coinsAddedRef.current = true;
+      console.log('Tractor Game Won - Awarding 80 coins for score:', score);
+      addCoins(80);
+    }
+  }, [gameState, score, addCoins]);
 
   /* ---------------- TIMER ---------------- */
   useEffect(() => {
@@ -241,11 +252,11 @@ export default function TractorGame() {
               )}
 
               <div className="flex gap-3">
-                <Button className="flex-1" onClick={() => { if (score >= 40) addCoins(80); startGame(); }}>
+                <Button className="flex-1" onClick={() => startGame()}>
                   <RotateCcw className="mr-2 h-4 w-4" /> Play Again
                 </Button>
                 <Link href="/learn">
-                  <Button variant="outline" className="flex-1" onClick={() => { if (score >= 40) addCoins(80); }}>
+                  <Button variant="outline" className="flex-1">
                     Back
                   </Button>
                 </Link>

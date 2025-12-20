@@ -1,7 +1,7 @@
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRoute, Link } from "wouter";
 import { CheckCircle, XCircle, ArrowRight, RotateCcw, Trophy } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -16,6 +16,7 @@ export default function Game() {
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const { addCoins } = useCoins();
   const [isAnswered, setIsAnswered] = useState(false);
+  const coinsAddedRef = useRef(false);
 
   // Mock questions
   const questions = [
@@ -73,14 +74,18 @@ export default function Game() {
     setShowResult(false);
     setSelectedAnswer(null);
     setIsAnswered(false);
+    coinsAddedRef.current = false;
   };
 
-  const handleGameEnd = () => {
-    // Award coins based on score (10 coins per correct answer)
-    if (score > 0) {
-      addCoins(score * 10);
+  // Add coins automatically when game ends
+  useEffect(() => {
+    if (showResult && !coinsAddedRef.current && score > 0) {
+      coinsAddedRef.current = true;
+      const coinsEarned = score * 10;
+      console.log('Quiz Game Won - Awarding', coinsEarned, 'coins for score:', score);
+      addCoins(coinsEarned);
     }
-  };
+  }, [showResult, score, addCoins]);
 
   if (showResult) {
     return (
@@ -99,11 +104,11 @@ export default function Game() {
           <p className="mb-8 text-lg font-bold text-primary">+{score * 10} Coins Earned! 🎉</p>
           
           <div className="w-full max-w-xs space-y-3">
-            <Button onClick={() => { handleGameEnd(); setTimeout(() => resetGame(), 50); }} size="lg" className="w-full">
+            <Button onClick={() => resetGame()} size="lg" className="w-full">
               <RotateCcw className="mr-2 h-4 w-4" /> Play Again
             </Button>
             <Link href="/learn">
-              <Button variant="outline" size="lg" className="w-full" onClick={handleGameEnd}>
+              <Button variant="outline" size="lg" className="w-full">
                 Back to Menu
               </Button>
             </Link>
