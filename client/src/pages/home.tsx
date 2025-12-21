@@ -19,6 +19,7 @@ const API_KEY = "bb4c0817cd95ebca24915ae099e8a8af";
 export default function Home() {
   const [weatherTemp, setWeatherTemp] = useState<number | null>(null);
   const [weatherDesc, setWeatherDesc] = useState<string>("Loading...");
+  const [weatherLocation, setWeatherLocation] = useState<string>(""); // ✅ NEW
   const [weatherLoading, setWeatherLoading] = useState(true);
 
   /* ================= FETCH WEATHER DATA ================= */
@@ -46,8 +47,10 @@ export default function Home() {
       // Capitalize weather description
       const desc = data.weather[0].main;
       setWeatherDesc(desc.charAt(0).toUpperCase() + desc.slice(1).toLowerCase());
+      setWeatherLocation(`${data.name}, ${data.sys.country}`);
     } catch (error) {
       setWeatherDesc("Unable to load");
+      setWeatherLocation(""); // ✅ CLEAR LOCATION
     } finally {
       setWeatherLoading(false);
     }
@@ -126,6 +129,9 @@ export default function Home() {
                   </span>
                   <span className="text-xs text-muted-foreground">
                     {weatherDesc} Today
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {weatherLocation}
                   </span>
                 </>
               )}
