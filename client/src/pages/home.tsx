@@ -31,7 +31,7 @@ export default function Home() {
         {/* Content */}
         <div className="relative z-10 flex min-h-[65vh] lg:min-h-[80vh] flex-col justify-end p-6 lg:p-14 text-white">
           <h2 className="mb-3 font-heading text-2xl lg:text-4xl font-bold leading-tight">
-            Namaste, Farmer Bhai! 🌾
+            Namaste, Kisan Bhaiya! 🌾
           </h2>
           <p className="mb-6 max-w-xl text-sm lg:text-lg text-white/90">
             Smart farming made easy — diagnose crops, get weather alerts, and
