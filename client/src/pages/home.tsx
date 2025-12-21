@@ -112,10 +112,10 @@ export default function Home() {
       </div>
 
       {/* ================= QUICK INFO CARDS ================= */}
-      <div className="mb-8 grid grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="mb-8 grid grid-cols-2 lg:grid-cols-3 gap-4 items-stretch">
         <Link href="/weather">
-          <Card className="cursor-pointer border-none bg-gradient-to-br from-blue-50 to-white shadow-sm hover:shadow-md transition">
-            <CardContent className="flex h-full flex-col items-center justify-center p-4 text-center">
+          <Card className="cursor-pointer border-none bg-gradient-to-br from-blue-50 to-white shadow-sm hover:shadow-md transition h-full">
+            <CardContent className="flex h-full flex-col items-center justify-center p-4 text-center min-h-[180px]">
               <Sun className="h-8 w-8 text-orange-400 mb-2 blink-effect" />
               {weatherLoading ? (
                 <div className="space-y-2 w-full">
@@ -139,8 +139,8 @@ export default function Home() {
           </Card>
         </Link>
 
-        <Card className="border-none bg-gradient-to-br from-red-50 to-white shadow-sm">
-          <CardContent className="flex h-full flex-col items-center justify-center p-4 text-center">
+        <Card className="border-none bg-gradient-to-br from-red-50 to-white shadow-sm h-full">
+          <CardContent className="flex h-full flex-col items-center justify-center p-4 text-center min-h-[180px]">
             <AlertTriangle className="h-8 w-8 text-destructive mb-2 blink-effect" />
             <span className="text-sm font-bold text-secondary">High Heat</span>
             <span className="text-xs text-muted-foreground">Alert</span>
@@ -148,9 +148,9 @@ export default function Home() {
         </Card>
 
         <Link href="/learn">
-          <Card className="cursor-pointer border-none bg-gradient-to-br from-green-50 to-white shadow-sm hover:shadow-md transition">
-            <CardContent className="flex h-full flex-col items-center justify-center p-4 text-center">
-              <Gamepad2 className="h-8 w-8 text-primary mb-2 blink-effect" />
+          <Card className="cursor-pointer border-none bg-gradient-to-br from-yellow-50 to-white shadow-sm hover:shadow-md transition h-full">
+            <CardContent className="flex h-full flex-col items-center justify-center p-4 text-center min-h-[180px]">
+              <Gamepad2 className="h-8 w-8 text-accent mb-2 blink-effect" />
               <span className="text-sm font-bold text-secondary">Learn</span>
               <span className="text-xs text-muted-foreground">Play Games</span>
             </CardContent>
