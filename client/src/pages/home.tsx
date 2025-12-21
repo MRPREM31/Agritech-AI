@@ -11,9 +11,67 @@ import {
   BookOpen,
 } from "lucide-react";
 import { Link } from "wouter";
+import { useEffect, useState } from "react";
 import heroImage from "@assets/generated_images/indian_farmer_with_smartphone_in_field.png";
 
+const API_KEY = "bb4c0817cd95ebca24915ae099e8a8af";
+
 export default function Home() {
+  const [weatherTemp, setWeatherTemp] = useState<number | null>(null);
+  const [weatherDesc, setWeatherDesc] = useState<string>("Loading...");
+  const [weatherLoading, setWeatherLoading] = useState(true);
+
+  /* ================= FETCH WEATHER DATA ================= */
+  useEffect(() => {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        fetchWeather(pos.coords.latitude, pos.coords.longitude);
+      },
+      () => {
+        // Fallback to Delhi
+        fetchWeatherByCity("Delhi");
+      }
+    );
+  }, []);
+
+  async function fetchWeather(lat: number, lon: number) {
+    try {
+      setWeatherLoading(true);
+      const response = await fetch(
+        `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric`
+      );
+      const data = await response.json();
+      setWeatherTemp(Math.round(data.main.temp));
+      
+      // Capitalize weather description
+      const desc = data.weather[0].main;
+      setWeatherDesc(desc.charAt(0).toUpperCase() + desc.slice(1).toLowerCase());
+    } catch (error) {
+      setWeatherDesc("Unable to load");
+    } finally {
+      setWeatherLoading(false);
+    }
+  }
+
+  async function fetchWeatherByCity(city: string) {
+    try {
+      setWeatherLoading(true);
+      const response = await fetch(
+        `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${API_KEY}&units=metric`
+      );
+      const data = await response.json();
+      setWeatherTemp(Math.round(data.main.temp));
+      
+      // Capitalize weather description
+      const desc = data.weather[0].main;
+      setWeatherDesc(desc.charAt(0).toUpperCase() + desc.slice(1).toLowerCase());
+    } catch (error) {
+      setWeatherDesc("Unable to load");
+    } finally {
+      setWeatherLoading(false);
+    }
+  }
+
   return (
     <Layout>
       {/* ================= HERO SECTION ================= */}
@@ -55,16 +113,29 @@ export default function Home() {
         <Link href="/weather">
           <Card className="cursor-pointer border-none bg-gradient-to-br from-blue-50 to-white shadow-sm hover:shadow-md transition">
             <CardContent className="flex h-full flex-col items-center justify-center p-4 text-center">
-              <Sun className="h-8 w-8 text-orange-400 mb-2" />
-              <span className="text-2xl font-bold text-secondary">28°C</span>
-              <span className="text-xs text-muted-foreground">Sunny Today</span>
+              <Sun className="h-8 w-8 text-orange-400 mb-2 blink-effect" />
+              {weatherLoading ? (
+                <div className="space-y-2 w-full">
+                  <div className="h-6 bg-gray-200 rounded animate-pulse w-12 mx-auto"></div>
+                  <div className="h-3 bg-gray-200 rounded animate-pulse w-20 mx-auto"></div>
+                </div>
+              ) : (
+                <>
+                  <span className="text-2xl font-bold text-secondary">
+                    {weatherTemp}°C
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {weatherDesc} Today
+                  </span>
+                </>
+              )}
             </CardContent>
           </Card>
         </Link>
 
         <Card className="border-none bg-gradient-to-br from-red-50 to-white shadow-sm">
           <CardContent className="flex h-full flex-col items-center justify-center p-4 text-center">
-            <AlertTriangle className="h-8 w-8 text-destructive mb-2" />
+            <AlertTriangle className="h-8 w-8 text-destructive mb-2 blink-effect" />
             <span className="text-sm font-bold text-secondary">High Heat</span>
             <span className="text-xs text-muted-foreground">Alert</span>
           </CardContent>
@@ -73,7 +144,7 @@ export default function Home() {
         <Link href="/learn">
           <Card className="cursor-pointer border-none bg-gradient-to-br from-green-50 to-white shadow-sm hover:shadow-md transition">
             <CardContent className="flex h-full flex-col items-center justify-center p-4 text-center">
-              <Gamepad2 className="h-8 w-8 text-primary mb-2" />
+              <Gamepad2 className="h-8 w-8 text-primary mb-2 blink-effect" />
               <span className="text-sm font-bold text-secondary">Learn</span>
               <span className="text-xs text-muted-foreground">Play Games</span>
             </CardContent>
