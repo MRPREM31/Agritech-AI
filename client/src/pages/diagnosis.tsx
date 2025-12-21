@@ -11,6 +11,8 @@ import {
   Volume2,
   ArrowLeft,
   Download,
+  AlertCircle,
+  X,
 } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -18,20 +20,21 @@ import jsPDF from "jspdf";
 
 export default function Diagnosis() {
   const [step, setStep] = useState<"input" | "analyzing" | "result">("input");
-  const [activeTab, setActiveTab] = useState<"text" | "camera">("text");
+  const [activeTab, setActiveTab] = useState<"camera" | "text">("camera");
   const [image, setImage] = useState<string | null>(null);
   const [textInput, setTextInput] = useState("");
   const [language, setLanguage] = useState<"en" | "hi">("en");
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [errorModal, setErrorModal] = useState<string | null>(null);
 
   const [diagnosis, setDiagnosis] = useState<any>(null);
   const [translated, setTranslated] = useState<any>(null);
   const [translating, setTranslating] = useState(false);
 
-  /* ================= DIAGNOSIS ================= */
+  /* ================= DIAGNOSIS - ONLY TEXT DESCRIPTION ================= */
   const handleDiagnose = async () => {
-    if (!textInput && !image) {
-      alert("Please describe the issue or upload an image.");
+    if (!textInput.trim()) {
+      setErrorModal("Please describe the crop issue in detail.");
       return;
     }
 
@@ -50,20 +53,34 @@ export default function Diagnosis() {
       setLanguage("en");
       setStep("result");
     } catch {
-      alert("AI diagnosis unavailable.");
+      setErrorModal("AI diagnosis is currently unavailable. Please try again.");
       setStep("input");
     }
   };
 
-  /* ================= IMAGE ================= */
+  /* ================= IMAGE UPLOAD ================= */
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Check file type
+    if (!file.type.startsWith("image/")) {
+      setErrorModal("Please select a valid image file (JPG, PNG, etc.)");
+      return;
+    }
+
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setErrorModal("Image size must be less than 5MB");
+      return;
+    }
+
     const reader = new FileReader();
     reader.onloadend = () => {
       setImage(reader.result as string);
-      setActiveTab("text");
+    };
+    reader.onerror = () => {
+      setErrorModal("Failed to read image file. Please try again.");
     };
     reader.readAsDataURL(file);
   };
@@ -251,31 +268,63 @@ export default function Diagnosis() {
                   onValueChange={(v) => setActiveTab(v as any)}
                 >
                   <TabsList className="grid grid-cols-2 mb-6">
-                    <TabsTrigger value="text">Describe Issue</TabsTrigger>
-                    <TabsTrigger value="camera">Upload Photo</TabsTrigger>
+                    <TabsTrigger value="camera">📷 Upload Photo</TabsTrigger>
+                    <TabsTrigger value="text">📝 Describe Issue</TabsTrigger>
                   </TabsList>
 
-                  <TabsContent value="text">
-                    <Textarea
-                      className="min-h-[180px]"
-                      placeholder="White powder on leaves, yellow spots..."
-                      value={textInput}
-                      onChange={(e) => setTextInput(e.target.value)}
-                    />
+                  {/* ============= CAMERA TAB: Upload Image Only ============= */}
+                  <TabsContent value="camera">
+                    <div className="text-center space-y-4">
+                      {image ? (
+                        <>
+                          <img
+                            src={image}
+                            alt="Uploaded crop"
+                            className="w-full max-h-[300px] rounded-lg object-cover mx-auto shadow-md"
+                          />
+                          <p className="text-sm text-green-600 font-semibold">✅ Image Added Successfully</p>
+                          <Button
+                            variant="outline"
+                            className="w-full"
+                            onClick={() => setImage(null)}
+                          >
+                            ✕ Remove Image
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Camera className="mx-auto mb-3 h-12 w-12 text-muted-foreground" />
+                          <p className="text-sm text-muted-foreground mb-4">
+                            Take a photo or upload an image of the affected crop
+                          </p>
+                          <Button variant="outline" className="relative w-full">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              capture="environment"
+                              className="absolute inset-0 opacity-0 cursor-pointer"
+                              onChange={handleImageUpload}
+                            />
+                            <Upload className="mr-2 h-4 w-4" />
+                            Take/Upload Photo
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </TabsContent>
 
-                  <TabsContent value="camera">
-                    <div className="text-center">
-                      <Camera className="mx-auto mb-3 text-muted-foreground" />
-                      <Button variant="outline" className="relative">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="absolute inset-0 opacity-0"
-                          onChange={handleImageUpload}
-                        />
-                        <Upload className="mr-2" /> Upload Image
-                      </Button>
+                  {/* ============= TEXT TAB: Describe Crop Issue ============= */}
+                  <TabsContent value="text">
+                    <div className="space-y-3">
+                      <p className="text-sm text-muted-foreground">
+                        Describe the crop issue in detail. What do you see?
+                      </p>
+                      <Textarea
+                        className="min-h-[180px]"
+                        placeholder="Example: White powder on leaves, yellow spots appearing on stems, leaves are wilting, brown patches on fruit, pest holes on leaves..."
+                        value={textInput}
+                        onChange={(e) => setTextInput(e.target.value)}
+                      />
                     </div>
                   </TabsContent>
 
@@ -383,6 +432,54 @@ export default function Diagnosis() {
                 <Download className="mr-2 h-4 w-4" /> Download Report
               </Button>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ================= ERROR MODAL ================= */}
+      <AnimatePresence>
+        {errorModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            onClick={() => setErrorModal(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0">
+                  <AlertCircle className="h-6 w-6 text-red-600" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-secondary mb-2">
+                    ⚠️ Please Check
+                  </h3>
+                  <p className="text-sm text-muted-foreground">{errorModal}</p>
+                </div>
+                <button
+                  onClick={() => setErrorModal(null)}
+                  className="flex-shrink-0 text-muted-foreground hover:text-secondary transition"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="mt-6">
+                <Button
+                  className="w-full bg-green-600 hover:bg-green-700"
+                  onClick={() => setErrorModal(null)}
+                >
+                  Got it, thanks!
+                </Button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

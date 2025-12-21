@@ -12,7 +12,7 @@ export async function registerRoutes(
    * POST /api/diagnose
    * Body:
    * {
-   *   "symptoms": "text entered by farmer",
+   *   "symptoms": "text description by farmer",
    *   "language": "en" | "hi"
    * }
    */
