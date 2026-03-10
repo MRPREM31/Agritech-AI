@@ -46,12 +46,11 @@ export default defineConfig({
     emptyOutDir: true,
   },
 
-  // ✅ ALLOW ACCESS FROM PHONE (LAN)
+  // ✅ LOCALHOST ONLY
   server: {
-    host: "0.0.0.0",
+    host: "localhost",
     port: 3000,
     strictPort: true,
-    allowedHosts: true,
     fs: {
       strict: true,
       deny: ["**/.*"],

@@ -94,10 +94,10 @@ app.use((req, res, next) => {
 httpServer.listen(
   {
     port,
-    host: "0.0.0.0",
+    host: "localhost",
   },
   () => {
-    log(`🚀 Server running on port ${port}`);
+    log(`🚀 Server running on http://localhost:${port}`);
   }
 );
 
